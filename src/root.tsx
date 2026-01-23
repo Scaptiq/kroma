@@ -14,6 +14,7 @@ import {
   Scripts,
   Title,
 } from "solid-start";
+import { isServer, NoHydration } from "solid-js/web";
 import "./root.css";
 
 export default function Root() {
@@ -43,16 +44,20 @@ export default function Root() {
         />
       </Head>
       <Body>
-        <Suspense>
-          <ErrorBoundary>
+        <NoHydration>
+          {!isServer && (
             <ThemeProvider theme={darkTheme}>
               <CssBaseline />
-              <Routes>
-                <FileRoutes />
-              </Routes>
+              <Suspense>
+                <ErrorBoundary>
+                  <Routes>
+                    <FileRoutes />
+                  </Routes>
+                </ErrorBoundary>
+              </Suspense>
             </ThemeProvider>
-          </ErrorBoundary>
-        </Suspense>
+          )}
+        </NoHydration>
         <Scripts />
       </Body>
     </Html>
