@@ -9,8 +9,10 @@ export default defineConfig({
     suidPlugin(),
     solid({
       adapter: process.env.npm_lifecycle_event === 'build' ? cloudflare({}) : node(),
-      ssr: true,
-      // This stops the build from hanging at "rendering index.html"
+      ssr: false,
+      // @ts-ignore
+      prerender: false,
+      // @ts-ignore
       prerenderRoutes: []
     })
   ],

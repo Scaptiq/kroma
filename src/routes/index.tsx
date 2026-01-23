@@ -1,10 +1,5 @@
-import { onMount } from "solid-js";
-import { useNavigate } from "solid-start";
+import { Navigate } from "solid-start";
 
 export default function Home() {
-    const navigate = useNavigate();
-    onMount(() => {
-        navigate("/v3/", { replace: true });
-    });
-    return null;
+    return <Navigate href="/v3/" />;
 }

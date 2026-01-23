@@ -14,7 +14,6 @@ import {
   Scripts,
   Title,
 } from "solid-start";
-import { isServer } from "solid-js/web";
 import "./root.css";
 
 export default function Root() {
@@ -46,20 +45,12 @@ export default function Root() {
       <Body>
         <Suspense>
           <ErrorBoundary>
-            {!isServer ? (
-              <ThemeProvider theme={darkTheme}>
-                <CssBaseline />
-                <Routes>
-                  <FileRoutes />
-                </Routes>
-              </ThemeProvider>
-            ) : (
-              <div id="ssr-placeholder">
-                <Routes>
-                  <FileRoutes />
-                </Routes>
-              </div>
-            )}
+            <ThemeProvider theme={darkTheme}>
+              <CssBaseline />
+              <Routes>
+                <FileRoutes />
+              </Routes>
+            </ThemeProvider>
           </ErrorBoundary>
         </Suspense>
         <Scripts />
