@@ -20,6 +20,7 @@ import {
     Button,
     Alert
 } from "@suid/material";
+
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import OpenInNewIcon from "@suid/icons-material/OpenInNew";
 import CheckCircleIcon from "@suid/icons-material/CheckCircle";
@@ -88,6 +89,7 @@ export default function ChatSetup() {
 
     const [copied, setCopied] = createSignal(false);
     const [previewUrl, setPreviewUrl] = createSignal("");
+    const [activeTab, setActiveTab] = createSignal(0);
 
     // Get the effective font to use
     const getEffectiveFont = () => {
@@ -255,14 +257,14 @@ export default function ChatSetup() {
 
                 <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                     {/* Header */}
-                    <Box sx={{ py: 3, borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <Box sx={{ py: 3, borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)', backdropFilter: 'blur(20px)', position: 'sticky', top: 0, zIndex: 50 }}>
                         <Container maxWidth="xl">
                             <Stack direction="row" alignItems="center" justifyContent="space-between">
                                 <Stack direction="row" alignItems="center" spacing={2}>
-                                    <Box sx={{ width: 40, height: 40, borderRadius: 2, background: 'linear-gradient(135deg, #a855f7, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(168, 85, 247, 0.5)' }}>
+                                    <Box sx={{ width: 40, height: 40, borderRadius: 2, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)' }}>
                                         <Typography variant="h5" sx={{ fontWeight: 800, color: 'white' }}>K</Typography>
                                     </Box>
-                                    <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                    <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                         Kroma
                                     </Typography>
                                 </Stack>
@@ -283,11 +285,16 @@ export default function ChatSetup() {
                             {/* LEFT COLUMN: SETTINGS */}
                             <Grid item xs={12} lg={4}>
                                 <Stack spacing={3}>
-
-                                    <Paper class="glass-panel" sx={{ p: 3 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <SettingsIcon sx={{ color: '#a855f7' }} /> Channel
+                                    {/* Channel Input Card */}
+                                    <Paper class="glass-panel" sx={{ p: 3, position: 'relative', overflow: 'hidden' }}>
+                                        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #8b5cf6, #ec4899)' }} />
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <SettingsIcon sx={{ color: '#a78bfa' }} /> Setup
                                         </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+                                            Enter your Twitch username to start customizing.
+                                        </Typography>
+
                                         <TextField
                                             fullWidth
                                             label="Twitch Username"
@@ -296,267 +303,222 @@ export default function ChatSetup() {
                                             onChange={(e) => setChannel(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                                             variant="outlined"
                                             sx={{
-                                                mb: 1,
                                                 '& .MuiOutlinedInput-root': {
+                                                    backdropFilter: 'blur(10px)',
+                                                    background: 'rgba(0,0,0,0.2)',
                                                     '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                                                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                                                    '&.Mui-focused fieldset': { borderColor: '#a855f7' }
-                                                }
+                                                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                                                    '&.Mui-focused fieldset': { borderColor: '#8b5cf6' }
+                                                },
+                                                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' },
+                                                '& .MuiInputLabel-root.Mui-focused': { color: '#8b5cf6' }
                                             }}
                                         />
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                            Enter a channel to generate your URL. The preview will update automatically.
-                                        </Typography>
                                     </Paper>
 
-                                    <Paper class="glass-panel" sx={{ p: 3 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Appearance</Typography>
-
-                                        <Stack spacing={2}>
-                                            <Box>
-                                                <Typography gutterBottom variant="body2" color="text.secondary">Font Size: {fontSize()}px</Typography>
-                                                <input
-                                                    type="range"
-                                                    min="12" max="32"
-                                                    value={fontSize()}
-                                                    onInput={(e) => setFontSize(parseInt(e.currentTarget.value))}
-                                                    class="styled-slider"
-                                                    style={{ width: '100%' }}
-                                                />
-                                            </Box>
-
-                                            {/* Font Selection */}
-                                            <Box>
-                                                <Typography gutterBottom variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <TextFieldsIcon sx={{ fontSize: 16 }} /> Font Family
-                                                </Typography>
-
-                                                <FormControlLabel
-                                                    control={<Switch checked={useCustomFont()} onChange={(_, v) => setUseCustomFont(v)} color="primary" size="small" />}
-                                                    label={<Typography variant="caption">Use custom font</Typography>}
-                                                    sx={{ mb: 1 }}
-                                                />
-
-                                                <Show when={!useCustomFont()}>
-                                                    <select
-                                                        value={selectedFont()}
-                                                        onChange={(e) => setSelectedFont(e.currentTarget.value)}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '10px 12px',
-                                                            background: 'rgba(0, 0, 0, 0.3)',
-                                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                            "border-radius": '8px',
-                                                            color: '#fff',
-                                                            "font-size": '14px',
-                                                            cursor: 'pointer',
-                                                            outline: 'none'
-                                                        }}
-                                                    >
-                                                        <For each={PRESET_FONTS}>
-                                                            {(font) => (
-                                                                <option value={font.value} style={{ background: '#1e293b', color: '#fff' }}>
-                                                                    {font.name}
-                                                                </option>
-                                                            )}
-                                                        </For>
-                                                    </select>
-                                                </Show>
-
-                                                <Show when={useCustomFont()}>
-                                                    <TextField
+                                    {/* TABS Navigation */}
+                                    <Paper class="glass-panel" sx={{ p: 1 }}>
+                                        <Stack direction="row" spacing={1}>
+                                            <For each={['General', 'Appearance', 'Behavior']}>
+                                                {(tab, index) => (
+                                                    <Button
                                                         fullWidth
-                                                        size="small"
-                                                        placeholder="Enter font name (e.g., Arial, Comic Sans MS)"
-                                                        value={customFont()}
-                                                        onChange={(e) => setCustomFont(e.target.value)}
+                                                        onClick={() => setActiveTab(index())}
                                                         sx={{
-                                                            '& .MuiOutlinedInput-root': {
-                                                                '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                                                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                                                                '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                                                            borderRadius: 3,
+                                                            py: 1,
+                                                            textTransform: 'none',
+                                                            color: activeTab() === index() ? '#fff' : 'rgba(255,255,255,0.5)',
+                                                            background: activeTab() === index() ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                            '&:hover': {
+                                                                background: activeTab() === index() ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
                                                             }
                                                         }}
-                                                    />
-                                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mt: 0.5, display: 'block' }}>
-                                                        Use any font installed on your PC. OBS will use this font if available.
-                                                    </Typography>
-                                                </Show>
-                                            </Box>
-
-                                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
-
-                                            <FormControlLabel
-                                                control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="primary" />}
-                                                label={<Box><Typography>Badges</Typography><Typography variant="caption" color="text.secondary">Subscriber, Moderator, etc.</Typography></Box>}
-                                            />
-                                            <FormControlLabel
-                                                control={<Switch checked={showEmotes()} onChange={(_, v) => setShowEmotes(v)} color="primary" />}
-                                                label={<Box><Typography>Emotes</Typography><Typography variant="caption" color="text.secondary">7TV, BTTV, FFZ support</Typography></Box>}
-                                            />
-                                            <Show when={showEmotes()}>
-                                                <Box sx={{ pl: 4, mb: 2 }}>
-                                                    <Typography gutterBottom variant="caption" color="text.secondary">Emote Scale: {emoteScale().toFixed(1)}x</Typography>
-                                                    <input
-                                                        type="range"
-                                                        min="0.5" max="3.0" step="0.1"
-                                                        value={emoteScale()}
-                                                        onInput={(e) => setEmoteScale(parseFloat(e.currentTarget.value))}
-                                                        class="styled-slider"
-                                                    />
-                                                </Box>
-                                            </Show>
-                                            <FormControlLabel
-                                                control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="primary" />}
-                                                label={<Box><Typography>Name Paints</Typography><Typography variant="caption" color="text.secondary">7TV Gradient Usernames</Typography></Box>}
-                                            />
-                                            <FormControlLabel
-                                                control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
-                                                label={<Box><Typography>Pronouns</Typography><Typography variant="caption" color="text.secondary">Display user pronouns</Typography></Box>}
-                                            />
-                                            <Show when={showPronouns()}>
-                                                <Alert
-                                                    severity="info"
-                                                    icon={<InfoIcon />}
-                                                    sx={{
-                                                        mt: 1,
-                                                        background: 'rgba(59, 130, 246, 0.1)',
-                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
-                                                        '& .MuiAlert-message': { width: '100%' }
-                                                    }}
-                                                >
-                                                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
-                                                        Users can set their pronouns at:
-                                                    </Typography>
-                                                    <a
-                                                        href="https://pr.alejo.io/"
-                                                        target="_blank"
-                                                        style={{
-                                                            color: '#60a5fa',
-                                                            "font-weight": 600,
-                                                            "text-decoration": 'none'
-                                                        }}
                                                     >
-                                                        pr.alejo.io →
-                                                    </a>
-                                                </Alert>
-                                            </Show>
+                                                        {tab}
+                                                    </Button>
+                                                )}
+                                            </For>
                                         </Stack>
                                     </Paper>
 
-                                    <Paper class="glass-panel" sx={{ p: 3 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Features</Typography>
-                                        <Stack spacing={1}>
-                                            <FormControlLabel control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />} label="Shared Chat (Stream Together)" />
-                                            <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Message Replies" />
-                                            <FormControlLabel control={<Switch checked={showTimestamps()} onChange={(_, v) => setShowTimestamps(v)} color="secondary" />} label="Show Timestamps" />
-                                            <FormControlLabel control={<Switch checked={fadeOutMessages()} onChange={(_, v) => setFadeOutMessages(v)} color="secondary" />} label="Fade Out Messages" />
-                                            <Show when={fadeOutMessages()}>
-                                                <Box sx={{ pl: 4, mb: 1 }}>
-                                                    <Typography gutterBottom variant="caption" color="text.secondary">Fade Delay: {fadeOutDelay()}s</Typography>
-                                                    <input
-                                                        type="range"
-                                                        min="5" max="120" step="5"
-                                                        value={fadeOutDelay()}
-                                                        onInput={(e) => setFadeOutDelay(parseInt(e.currentTarget.value))}
-                                                        class="styled-slider"
-                                                    />
+                                    {/* Panels */}
+                                    <Paper class="glass-panel" sx={{ p: 3, minHeight: 400 }}>
+
+                                        {/* TAB 0: GENERAL */}
+                                        <Show when={activeTab() === 0}>
+                                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>General Settings</Typography>
+                                            <Stack spacing={2}>
+                                                <FormControlLabel control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />} label="Shared Chat (Stream Together)" />
+                                                <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Message Replies" />
+                                                <FormControlLabel control={<Switch checked={showTimestamps()} onChange={(_, v) => setShowTimestamps(v)} color="secondary" />} label="Show Timestamps" />
+                                                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', my: 2 }} />
+                                                <Typography variant="caption" color="text.secondary">Inclusive Features</Typography>
+                                                <FormControlLabel
+                                                    control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
+                                                    label={<Box><Typography>Pronouns</Typography><Typography variant="caption" color="text.secondary">Display user pronouns</Typography></Box>}
+                                                />
+                                                <Show when={showPronouns()}>
+                                                    <Alert severity="info" icon={<InfoIcon fontSize="small" />} sx={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', '& .MuiAlert-message': { width: '100%' } }}>
+                                                        Set pronouns at <a href="https://pr.alejo.io/" target="_blank" style={{ color: '#a78bfa', "font-weight": 600, "text-decoration": 'none' }}>pr.alejo.io →</a>
+                                                    </Alert>
+                                                </Show>
+                                            </Stack>
+                                        </Show>
+
+                                        {/* TAB 1: APPEARANCE */}
+                                        <Show when={activeTab() === 1}>
+                                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>Appearance</Typography>
+                                            <Stack spacing={3}>
+                                                <Box>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Typography</Typography>
+
+                                                    <Box sx={{ mt: 2 }}>
+                                                        <FormControlLabel
+                                                            control={<Switch checked={useCustomFont()} onChange={(_, v) => setUseCustomFont(v)} size="small" />}
+                                                            label={<Typography variant="body2">Use custom font</Typography>}
+                                                        />
+                                                        <Show when={!useCustomFont()} fallback={
+                                                            <TextField
+                                                                fullWidth size="small" placeholder="Font Name (e.g. Arial)" value={customFont()} onChange={(e) => setCustomFont(e.target.value)}
+                                                                sx={{ mt: 1, '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } }}
+                                                            />
+                                                        }>
+                                                            <select
+                                                                value={selectedFont()}
+                                                                onChange={(e) => setSelectedFont(e.currentTarget.value)}
+                                                                style={{
+                                                                    width: '100%', padding: '10px', "margin-top": '8px',
+                                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', "border-radius": '8px', color: '#fff', outline: 'none'
+                                                                }}
+                                                            >
+                                                                <For each={PRESET_FONTS}>{(f) => <option value={f.value} style={{ background: '#09090b' }}>{f.name}</option>}</For>
+                                                            </select>
+                                                        </Show>
+                                                    </Box>
+
+                                                    <Box sx={{ mt: 3 }}>
+                                                        <Typography gutterBottom variant="body2">Font Size: {fontSize()}px</Typography>
+                                                        <input type="range" min="12" max="32" value={fontSize()} onInput={(e) => setFontSize(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                    </Box>
                                                 </Box>
-                                            </Show>
-                                            <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands" />
-                                            <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots" />
-                                        </Stack>
+
+                                                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+
+                                                <Box>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Elements</Typography>
+                                                    <Stack spacing={1} sx={{ mt: 2 }}>
+                                                        <FormControlLabel control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} />} label="Badges" />
+                                                        <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} />} label="Name Paints (7TV)" />
+                                                        <Box>
+                                                            <FormControlLabel control={<Switch checked={showEmotes()} onChange={(_, v) => setShowEmotes(v)} />} label="Emotes" />
+                                                            <Show when={showEmotes()}>
+                                                                <Box sx={{ pl: 4, mt: 1 }}>
+                                                                    <Typography gutterBottom variant="caption" color="text.secondary">Scale: {emoteScale().toFixed(1)}x</Typography>
+                                                                    <input type="range" min="0.5" max="3.0" step="0.1" value={emoteScale()} onInput={(e) => setEmoteScale(parseFloat(e.currentTarget.value))} class="styled-slider" />
+                                                                </Box>
+                                                            </Show>
+                                                        </Box>
+                                                    </Stack>
+                                                </Box>
+                                            </Stack>
+                                        </Show>
+
+                                        {/* TAB 2: BEHAVIOR */}
+                                        <Show when={activeTab() === 2}>
+                                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>Behavior & Filters</Typography>
+                                            <Stack spacing={2}>
+                                                <Box>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Message Management</Typography>
+                                                    <Box sx={{ mt: 2 }}>
+                                                        <FormControlLabel control={<Switch checked={fadeOutMessages()} onChange={(_, v) => setFadeOutMessages(v)} color="secondary" />} label="Fade Out Messages" />
+                                                        <Show when={fadeOutMessages()}>
+                                                            <Box sx={{ pl: 4, mt: 1, mb: 2 }}>
+                                                                <Typography gutterBottom variant="caption" color="text.secondary">Delay: {fadeOutDelay()}s</Typography>
+                                                                <input type="range" min="5" max="120" step="5" value={fadeOutDelay()} onInput={(e) => setFadeOutDelay(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                            </Box>
+                                                        </Show>
+                                                        <Typography gutterBottom variant="body2">Max Messages: {maxMessages()}</Typography>
+                                                        <input type="range" min="10" max="200" value={maxMessages()} onInput={(e) => setMaxMessages(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                    </Box>
+                                                </Box>
+
+                                                <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+
+                                                <Box>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Moderation</Typography>
+                                                    <Stack spacing={1} sx={{ mt: 2 }}>
+                                                        <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands" />
+                                                        <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots" />
+                                                    </Stack>
+                                                </Box>
+                                            </Stack>
+                                        </Show>
+
                                     </Paper>
 
+                                    {/* Export / URL Card */}
                                     <Show when={channel()}>
-                                        <Paper class="glass-panel" sx={{ p: 3, background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(16, 185, 129, 0.1))', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
-                                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#a855f7' }}>Your Overlay URL</Typography>
+                                        <Paper class="glass-panel" sx={{ p: 3, background: 'rgba(9, 9, 11, 0.8)', borderColor: 'rgba(139, 92, 246, 0.2)', boxShadow: '0 0 40px -10px rgba(139, 92, 246, 0.15)' }}>
+                                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#fff' }}>Get Overlay URL</Typography>
                                             <Box sx={{
                                                 p: 2,
-                                                background: 'rgba(0,0,0,0.3)',
-                                                borderRadius: 1,
+                                                background: '#000',
+                                                borderRadius: 2,
                                                 fontFamily: 'monospace',
-                                                fontSize: '0.85rem',
-                                                wordBreak: 'break-all',
-                                                color: '#10b981',
+                                                fontSize: '0.8rem',
+                                                color: '#a78bfa',
                                                 mb: 2,
-                                                border: '1px solid rgba(255,255,255,0.1)'
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                wordBreak: 'break-all'
                                             }}>
                                                 {generateUrl()}
                                             </Box>
-                                            <Stack spacing={2}>
-                                                <Stack direction="row" spacing={2}>
-                                                    <Button
-                                                        variant="contained"
-                                                        startIcon={copied() ? <CheckCircleIcon /> : <ContentCopyIcon />}
-                                                        onClick={handleCopy}
-                                                        color={copied() ? "success" : "primary"}
-                                                        fullWidth
-                                                    >
-                                                        {copied() ? "Copied!" : "Copy URL"}
-                                                    </Button>
-                                                    <Button
-                                                        variant="outlined"
-                                                        startIcon={<OpenInNewIcon />}
-                                                        onClick={handleOpen}
-                                                        color="primary"
-                                                        fullWidth
-                                                    >
-                                                        Open
-                                                    </Button>
-                                                </Stack>
-
-                                                <Box sx={{ pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                                                            Recommended Size:
-                                                        </Typography>
-                                                        <Typography variant="caption" sx={{ color: '#a855f7', fontWeight: 600, fontFamily: 'monospace' }}>
-                                                            450 x 800 <span style={{ opacity: 0.5, "font-size": "0.8em" }}>(Set in OBS)</span>
-                                                        </Typography>
-                                                    </Stack>
-
-                                                    <a
-                                                        href={generateUrl()}
-                                                        draggable={true}
-                                                        onDragStart={(e) => {
-                                                            if (e.dataTransfer) {
-                                                                const url = generateUrl();
-                                                                e.dataTransfer.setData("text/plain", url);
-                                                                e.dataTransfer.setData("text/uri-list", url);
-                                                                e.dataTransfer.setData("text/html", `<a href="${url}">Kroma Chat</a>`);
-                                                                e.dataTransfer.setData("text/x-moz-url", `${url}\nKroma Chat`);
-
-                                                                // Hide the button ghost
-                                                                const img = new Image();
-                                                                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                                                e.dataTransfer.setDragImage(img, 0, 0);
-                                                            }
-                                                        }}
-                                                        style={{ "text-decoration": 'none', display: 'block' }}
-                                                        onClick={(e) => e.preventDefault()}
-                                                    >
-                                                        <Button
-                                                            variant="outlined"
-                                                            startIcon={<DragIndicatorIcon />}
-                                                            fullWidth
-                                                            sx={{
-                                                                color: 'rgba(255,255,255,0.8)',
-                                                                borderColor: 'rgba(255,255,255,0.2)',
-                                                                background: 'rgba(255,255,255,0.02)',
-                                                                '&:hover': {
-                                                                    borderColor: '#a855f7',
-                                                                    background: 'rgba(168, 85, 247, 0.05)'
-                                                                },
-                                                                cursor: 'grab',
-                                                                textTransform: 'none'
-                                                            }}
-                                                        >
-                                                            Drag to OBS Source
-                                                        </Button>
-                                                    </a>
-                                                </Box>
+                                            <Stack direction="row" spacing={2}>
+                                                <Button
+                                                    variant="contained"
+                                                    startIcon={copied() ? <CheckCircleIcon /> : <ContentCopyIcon />}
+                                                    onClick={handleCopy}
+                                                    color={copied() ? "success" : "primary"}
+                                                    fullWidth
+                                                    sx={{ borderRadius: 2, py: 1.5, fontWeight: 700 }}
+                                                >
+                                                    {copied() ? "Copied" : "Copy"}
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    startIcon={<OpenInNewIcon />}
+                                                    onClick={handleOpen}
+                                                    fullWidth
+                                                    sx={{ borderRadius: 2, py: 1.5, borderColor: 'rgba(255,255,255,0.2)', color: 'white', '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.05)' } }}
+                                                >
+                                                    Open
+                                                </Button>
                                             </Stack>
+                                            <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                                                <a
+                                                    href={generateUrl()}
+                                                    draggable={true}
+                                                    onDragStart={(e) => {
+                                                        if (e.dataTransfer) {
+                                                            const url = generateUrl();
+                                                            e.dataTransfer.setData("text/plain", url);
+                                                            e.dataTransfer.setData("text/uri-list", url);
+                                                            e.dataTransfer.setData("text/html", `<a href="${url}">Kroma Chat</a>`);
+                                                            e.dataTransfer.setData("text/x-moz-url", `${url}\nKroma Chat`);
+                                                            const img = new Image();
+                                                            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                                            e.dataTransfer.setDragImage(img, 0, 0);
+                                                        }
+                                                    }}
+                                                    style={{ "text-decoration": 'none', display: 'inline-block' }}
+                                                    onClick={(e) => e.preventDefault()}
+                                                >
+                                                    <Button startIcon={<DragIndicatorIcon />} sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', '&:hover': { color: '#fff', background: 'transparent' } }}>
+                                                        Drag to OBS Sources
+                                                    </Button>
+                                                </a>
+                                            </Box>
                                         </Paper>
                                     </Show>
 
@@ -576,48 +538,32 @@ export default function ChatSetup() {
                                             position: 'relative'
                                         }}
                                     >
-                                        <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <VisibilityIcon sx={{ color: '#10b981' }} /> Live Preview
-                                                <Typography component="span" variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', ml: 1 }}>
-                                                    {channel() ? `(Showing channel: ${channel()})` : '(Waiting for input)'}
-                                                </Typography>
+                                        <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, color: 'rgba(255,255,255,0.7)' }}>
+                                                <VisibilityIcon sx={{ fontSize: 16, color: '#10b981' }} /> Live Preview
                                             </Typography>
-
                                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#EF4444' }} />
-                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B' }} />
-                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#10B981' }} />
+                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
                                             </Box>
                                         </Box>
 
-                                        <Box sx={{ flex: 1, position: 'relative', background: 'black' }}>
+                                        <Box sx={{ flex: 1, position: 'relative', background: '#000' }}>
                                             <Show when={previewUrl()} fallback={
                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.3)', flexDirection: 'column', gap: 2 }}>
-                                                    <Typography variant="h6">Enter a channel to preview</Typography>
+                                                    <Typography variant="body1">Enter a channel to preview</Typography>
                                                 </Box>
                                             }>
                                                 <iframe
                                                     src={previewUrl()}
-                                                    style={{
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        border: 'none',
-                                                        background: 'transparent' // Allow overlay transparency to show
-                                                    }}
+                                                    style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
                                                     allow="autoplay"
                                                 />
                                             </Show>
-
-                                            {/* Background simulator for transparency check */}
                                             <Box sx={{
-                                                position: 'absolute',
-                                                inset: 0,
-                                                zIndex: -1,
-                                                backgroundImage: 'linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%)',
-                                                backgroundSize: '20px 20px',
-                                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
-                                                opacity: 0.2
+                                                position: 'absolute', inset: 0, zIndex: -1,
+                                                backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)',
+                                                backgroundSize: '20px 20px', opacity: 1
                                             }} />
                                         </Box>
                                     </Paper>
@@ -625,11 +571,9 @@ export default function ChatSetup() {
                             </Grid>
                         </Grid>
                     </Container>
-
-                    {/* Footer */}
-                    <Box sx={{ textAlign: 'center', py: 3, borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.4)' }}>
-                        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-                            Kroma • Made with 💜 by <span style={{ color: '#a855f7', "font-weight": 600 }}>scaptiq</span> • Based on <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: 'inherit', "text-decoration": 'underline' }}>ChatIS</a>
+                    <Box sx={{ textAlign: 'center', py: 4, borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)' }}>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
+                            Kroma • <a href="https://scaptiq.com" target="_blank" style={{ color: 'inherit', "text-decoration": 'none' }}>Privacy</a> • <a href="https://github.com/scaptiq/kroma" target="_blank" style={{ color: 'inherit', "text-decoration": 'none' }}>Source</a>
                         </Typography>
                     </Box>
                 </Box>
