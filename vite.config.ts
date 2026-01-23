@@ -8,12 +8,10 @@ export default defineConfig({
   plugins: [
     suidPlugin(),
     solid({
-      ssr: false,
-      // @ts-ignore
-      prerender: false,
-      // @ts-ignore
-      prerenderRoutes: [],
-      adapter: process.env.npm_lifecycle_event === 'build' ? cloudflare({}) : node()
-    }),
+      adapter: process.env.npm_lifecycle_event === 'build' ? cloudflare({}) : node(),
+      ssr: true,
+      // This stops the build from hanging at "rendering index.html"
+      prerenderRoutes: []
+    })
   ],
 });
