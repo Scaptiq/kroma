@@ -27,6 +27,8 @@ Kroma is designed to be **beautiful**, **performant**, and **inclusive**. It ren
 - **Custom Fonts**: Use ANY font installed on your computer.
 - **Emote Scaling**: Make emotes huge (up to 3x size) for maximum hype.
 - **Smart Fading**: Automatically fade out old messages to keep your overlay clean.
+- **Custom Filters**: Hide specific users or custom bots with a simple blocklist.
+
 
 ---
 
