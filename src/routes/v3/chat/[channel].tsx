@@ -611,8 +611,15 @@ export default function Chat() {
                                         </div>
                                     </Show>
 
-                                    {/* Username */}
+                                    {/* Username Group */}
                                     <div class="flex items-baseline gap-1.5 shrink-0">
+                                        {/* Pronouns */}
+                                        <Show when={msg.pronouns && config.showPronouns}>
+                                            <span class="pronouns-badge">
+                                                {msg.pronouns}
+                                            </span>
+                                        </Show>
+
                                         <span
                                             class={`username ${msg.paint ? 'username--painted' : ''}`}
                                             style={{
@@ -622,13 +629,6 @@ export default function Chat() {
                                         >
                                             {msg.displayName}
                                         </span>
-
-                                        {/* Pronouns */}
-                                        <Show when={msg.pronouns && config.showPronouns}>
-                                            <span class="pronouns-badge">
-                                                {msg.pronouns}
-                                            </span>
-                                        </Show>
 
                                         <Show when={!msg.isAction}>
                                             <span class="separator">:</span>
