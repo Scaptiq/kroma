@@ -1,6 +1,5 @@
-// @refresh reload
 import { createTheme, CssBaseline, ThemeProvider } from "@suid/material";
-import { Suspense } from "solid-js";
+import { createSignal, onMount, Suspense } from "solid-js";
 import {
   useLocation,
   A,
@@ -14,10 +13,12 @@ import {
   Scripts,
   Title,
 } from "solid-start";
-import { isServer, NoHydration } from "solid-js/web";
 import "./root.css";
 
 export default function Root() {
+  const [isClient, setIsClient] = createSignal(false);
+  onMount(() => setIsClient(true));
+
   const darkTheme = createTheme({
     palette: {
       mode: "dark",
@@ -44,20 +45,18 @@ export default function Root() {
         />
       </Head>
       <Body>
-        <NoHydration>
-          {!isServer && (
-            <ThemeProvider theme={darkTheme}>
-              <CssBaseline />
-              <Suspense>
-                <ErrorBoundary>
-                  <Routes>
-                    <FileRoutes />
-                  </Routes>
-                </ErrorBoundary>
-              </Suspense>
-            </ThemeProvider>
-          )}
-        </NoHydration>
+        <Suspense>
+          <ErrorBoundary>
+            {isClient() && (
+              <ThemeProvider theme={darkTheme}>
+                <CssBaseline />
+                <Routes>
+                  <FileRoutes />
+                </Routes>
+              </ThemeProvider>
+            )}
+          </ErrorBoundary>
+        </Suspense>
         <Scripts />
       </Body>
     </Html>

@@ -9,11 +9,7 @@ export default defineConfig({
     suidPlugin(),
     solid({
       adapter: process.env.npm_lifecycle_event === 'build' ? cloudflare({}) : node(),
-      ssr: true,
-      // This tells the build to skip "rendering index.html"
-      // which is exactly where SUID is crashing.
-      // @ts-ignore
-      prerenderRoutes: []
-    }),
+      ssr: true
+    })
   ],
 });
