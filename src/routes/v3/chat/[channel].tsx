@@ -547,6 +547,38 @@ export default function Chat() {
                 console.error("Failed to connect to Twitch:", err);
             }
         }
+
+        // Listen for test events from parent
+        const handleTestEvent = (event: MessageEvent) => {
+            if (event.data?.type === 'KROMA_TEST_MSG') {
+                const msg = event.data.payload;
+                const newMessage: ChatMessage = {
+                    id: crypto.randomUUID(),
+                    username: msg.username || 'test_user',
+                    displayName: msg.username || 'Test_User',
+                    userId: '12345',
+                    content: msg.message,
+                    parsedContent: parseMessageContent(msg.message, undefined),
+                    color: generateColor(msg.username || 'test_user'),
+                    timestamp: Date.now(),
+                    type: msg.type || 'chat',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: msg.type === 'highlighted',
+                    badges: [{ id: 'kroma', title: 'Test', url: '/favicon.svg', provider: 'twitch' }],
+                    isShared: false,
+                    bits: msg.bits
+                };
+
+                setMessages(prev => {
+                    const updated = [...prev, newMessage];
+                    if (updated.length > config.maxMessages) return updated.slice(-config.maxMessages);
+                    return updated;
+                });
+            }
+        };
+        window.addEventListener('message', handleTestEvent);
+        onCleanup(() => window.removeEventListener('message', handleTestEvent));
     });
 
     onCleanup(() => {
