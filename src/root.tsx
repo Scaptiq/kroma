@@ -21,16 +21,20 @@ export default function Root() {
     palette: {
       mode: "dark",
     },
+    typography: {
+      fontFamily: '"Segoe UI", "Inter", "Roboto", sans-serif',
+    }
   });
   return (
     <Html lang="en">
       <Head>
-        <Title>ChatIS by IS2511</Title>
+        <Title>Kroma</Title>
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <Meta charset="utf-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto:300,400,500,700&display=swap"
         />
         <link
           rel="stylesheet"

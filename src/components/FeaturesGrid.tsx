@@ -29,7 +29,7 @@ export default function FeaturesGrid(props) {
                         <Typography variant="body1">
                             The following emote providers are supported:
                         </Typography>
-                        <List dense sx={{"paddingBottom": 0}}>
+                        <List dense sx={{ "paddingBottom": 0 }}>
                             <ListItem>
                                 <ListItemIcon>
                                     <TwitchIcon />
@@ -59,14 +59,14 @@ export default function FeaturesGrid(props) {
 
                     <FeatureCard title="Name paints!">
                         <Typography variant="body1">
-                            Say hello to name paints from 7TV! 
+                            Say hello to name paints from 7TV!
                             Like <SevenTVNamepaint
-                                style={{"font-weight": "700"}}
+                                style={{ "font-weight": "700" }}
                                 paintColor="-676318977"
                                 paintBackground="radial-gradient(circle, rgba(215, 176, 48, 1.000) 0%, rgba(255, 247, 182, 1.000) 100%)"
                                 paintFilter="drop-shadow(0.6px 0px 0.2px rgba(120, 120, 120, 1.000)) drop-shadow(-0.6px 0px 0.2px rgba(120, 120, 120, 1.000)) drop-shadow(0px 0.6px 0.2px rgba(120, 120, 120, 1.000)) drop-shadow(0px -0.6px 0.2px rgba(120, 120, 120, 1.000)) drop-shadow(0px 0px 1.5px rgba(120, 120, 120, 1.000))"
                             >Festive Gold</SevenTVNamepaint>, <SevenTVNamepaint
-                                style={{"font-weight": "700"}}
+                                style={{ "font-weight": "700" }}
                                 paintColor=""
                                 paintBackground="linear-gradient(360deg, rgba(10, 182, 255, 1.000) 0%, rgba(10, 182, 255, 1.000) 25%, rgba(153, 224, 255, 1.000) 25%, rgba(153, 224, 255, 1.000) 50%, rgba(153, 0, 255, 1.000) 50%, rgba(153, 0, 255, 1.000) 75%, rgba(255, 0, 200, 1.000) 75%)"
                                 paintFilter="drop-shadow(0px 0px 1px rgba(255, 102, 102, 1.000))"
@@ -82,37 +82,37 @@ export default function FeaturesGrid(props) {
                     <Typography variant="body1">
                         The following badge providers are supported:
                         <List dense>
-                        <ListItem>
-                            <ListItemIcon>
-                                <TwitchIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="Twitch" />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemIcon>
-                                <SevenTVIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="7TV" />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemIcon>
-                                <BTTVIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="BTTV" />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemIcon>
-                                <FFZIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="FFZ" secondary="And FFZ:AP too!" />
-                        </ListItem>
-                        <ListItem>
-                            <ListItemIcon>
-                                <ChatterinoIcon htmlColor="white" />
-                            </ListItemIcon>
-                            <ListItemText primary="Chatterino" />
-                        </ListItem>
-                        {/* <ListItem>
+                            <ListItem>
+                                <ListItemIcon>
+                                    <TwitchIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="Twitch" />
+                            </ListItem>
+                            <ListItem>
+                                <ListItemIcon>
+                                    <SevenTVIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="7TV" />
+                            </ListItem>
+                            <ListItem>
+                                <ListItemIcon>
+                                    <BTTVIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="BTTV" />
+                            </ListItem>
+                            <ListItem>
+                                <ListItemIcon>
+                                    <FFZIcon />
+                                </ListItemIcon>
+                                <ListItemText primary="FFZ" secondary="And FFZ:AP too!" />
+                            </ListItem>
+                            <ListItem>
+                                <ListItemIcon>
+                                    <ChatterinoIcon htmlColor="white" />
+                                </ListItemIcon>
+                                <ListItemText primary="Chatterino" />
+                            </ListItem>
+                            {/* <ListItem>
                             <ListItemIcon>
                                 <ChatterinoIcon htmlColor="white" />
                             </ListItemIcon>
@@ -126,7 +126,7 @@ export default function FeaturesGrid(props) {
                                     }}>Homies</span></span>
                                 } secondary="(optional)" />
                         </ListItem> */}
-                    </List>
+                        </List>
                     </Typography>
                 </FeatureCard>
             </Grid>
@@ -137,7 +137,7 @@ export default function FeaturesGrid(props) {
                     <FeatureCard title="Fonts!">
                         <Typography variant="body1">
                             <span>Any font</span> you have on your system can be used!
-                            We have some sweet defaults though, check out the <span style={{"font-family": "'Alsina'", "font-size": "1.2em"}}>VSauce font</span> for example.
+                            We have some sweet defaults though, check out the <span style={{ "font-family": "'Alsina'", "font-size": "1.2em" }}>VSauce font</span> for example.
                         </Typography>
                     </FeatureCard>
 
@@ -145,6 +145,26 @@ export default function FeaturesGrid(props) {
                         <Typography variant="body2" gutterBottom color="text.secondary">And commands!</Typography>
                         <Typography variant="body1">
                             Hide messages from bots and messages with commands. No more gambling addicts in your chat!
+                        </Typography>
+                    </FeatureCard>
+
+                    <FeatureCard title="Shared Chat Support" >
+                        <Typography variant="body2" gutterBottom color="text.secondary">Stream Together!</Typography>
+                        <Typography variant="body1">
+                            Full support for Twitch's Shared Chat feature. Messages from other channels are clearly marked with the source channel name, and original badges are preserved.
+                        </Typography>
+                    </FeatureCard>
+
+                </Stack>
+            </Grid>
+
+            <Grid item lg={3} md={4} sm={6} xs={12}>
+                <Stack direction="column" spacing={2}>
+
+                    <FeatureCard title="Pronouns!" >
+                        <Typography variant="body2" gutterBottom color="text.secondary">Respect pronouns!</Typography>
+                        <Typography variant="body1">
+                            Automatically displays user pronouns from <a href="https://pronouns.alejo.io" target="_blank" rel="noopener" style={{ "color": "#9f7aea", "text-decoration": "underline" }}>pronouns.alejo.io</a>. Pronouns appear as a subtle badge next to usernames.
                         </Typography>
                     </FeatureCard>
 
@@ -177,7 +197,7 @@ export default function FeaturesGrid(props) {
                     </Typography>
                 </FeatureCard>
             </Grid> */}
-            
+
         </Grid>
     );
 }
