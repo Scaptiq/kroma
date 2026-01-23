@@ -48,6 +48,7 @@ interface ChatConfig {
     fadeOutMessages: boolean;
     fadeOutDelay: number;
     fontSize: number;
+    fontFamily: string;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -65,6 +66,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     fadeOutMessages: false,
     fadeOutDelay: 30000,
     fontSize: 16,
+    fontFamily: 'Segoe UI',
 };
 
 // Known bot usernames
@@ -110,6 +112,7 @@ export default function Chat() {
         hideBots: searchParams.hideBots === 'true',
         maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
         fontSize: parseInt(searchParams.fontSize || '16') || 16,
+        fontFamily: searchParams.font || 'Segoe UI',
     };
 
     // Scroll to bottom when new messages arrive
@@ -539,7 +542,10 @@ export default function Chat() {
             {/* Chat Container */}
             <div
                 class="fixed inset-0 pointer-events-none p-4 flex items-end overflow-hidden"
-                style={{ "font-size": `${config.fontSize}px` }}
+                style={{
+                    "font-size": `${config.fontSize}px`,
+                    "font-family": `"${config.fontFamily}", "Segoe UI", "Inter", sans-serif`
+                }}
             >
                 <ul
                     ref={messageContainer}

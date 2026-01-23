@@ -17,7 +17,8 @@ import {
     ThemeProvider,
     Typography,
     Switch,
-    Button
+    Button,
+    Alert
 } from "@suid/material";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import OpenInNewIcon from "@suid/icons-material/OpenInNew";
@@ -25,8 +26,24 @@ import CheckCircleIcon from "@suid/icons-material/CheckCircle";
 import SettingsIcon from "@suid/icons-material/Settings";
 import VisibilityIcon from "@suid/icons-material/Visibility";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
+import InfoIcon from "@suid/icons-material/Info";
+import TextFieldsIcon from "@suid/icons-material/TextFields";
 
 import MySiteTitle from "~/components/MySiteTitle";
+
+// Preset fonts that users can choose from
+const PRESET_FONTS = [
+    { name: 'Segoe UI', value: 'Segoe UI' },
+    { name: 'Inter', value: 'Inter' },
+    { name: 'Roboto', value: 'Roboto' },
+    { name: 'Open Sans', value: 'Open Sans' },
+    { name: 'Poppins', value: 'Poppins' },
+    { name: 'Montserrat', value: 'Montserrat' },
+    { name: 'Lato', value: 'Lato' },
+    { name: 'Comic Neue', value: 'Comic Neue' },
+    { name: 'Comfortaa', value: 'Comfortaa' },
+    { name: 'Ubuntu', value: 'Ubuntu' },
+];
 
 export default function ChatSetup() {
     const theme = createTheme({
@@ -63,9 +80,20 @@ export default function ChatSetup() {
     const [hideBots, setHideBots] = createSignal(false);
     const [maxMessages, setMaxMessages] = createSignal(50);
     const [fontSize, setFontSize] = createSignal(16);
+    const [selectedFont, setSelectedFont] = createSignal('Segoe UI');
+    const [customFont, setCustomFont] = createSignal('');
+    const [useCustomFont, setUseCustomFont] = createSignal(false);
 
     const [copied, setCopied] = createSignal(false);
     const [previewUrl, setPreviewUrl] = createSignal("");
+
+    // Get the effective font to use
+    const getEffectiveFont = () => {
+        if (useCustomFont() && customFont().trim()) {
+            return customFont().trim();
+        }
+        return selectedFont();
+    };
 
     // Update preview URL when settings change
     createEffect(() => {
@@ -88,6 +116,8 @@ export default function ChatSetup() {
         if (hideCommands()) params.set('hideCommands', 'true');
         if (hideBots()) params.set('hideBots', 'true');
         if (maxMessages() !== 50) params.set('maxMessages', String(maxMessages()));
+        const font = getEffectiveFont();
+        if (font !== 'Segoe UI') params.set('font', font);
         if (fontSize() !== 16) params.set('fontSize', String(fontSize()));
 
         const queryString = params.toString();
@@ -111,6 +141,8 @@ export default function ChatSetup() {
         if (hideBots()) url.searchParams.set('hideBots', 'true');
         if (maxMessages() !== 50) url.searchParams.set('maxMessages', String(maxMessages()));
         if (fontSize() !== 16) url.searchParams.set('fontSize', String(fontSize()));
+        const font = getEffectiveFont();
+        if (font !== 'Segoe UI') url.searchParams.set('font', font);
 
         return url.toString();
     };
@@ -256,6 +288,67 @@ export default function ChatSetup() {
                                                 />
                                             </Box>
 
+                                            {/* Font Selection */}
+                                            <Box>
+                                                <Typography gutterBottom variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <TextFieldsIcon sx={{ fontSize: 16 }} /> Font Family
+                                                </Typography>
+
+                                                <FormControlLabel
+                                                    control={<Switch checked={useCustomFont()} onChange={(_, v) => setUseCustomFont(v)} color="primary" size="small" />}
+                                                    label={<Typography variant="caption">Use custom font</Typography>}
+                                                    sx={{ mb: 1 }}
+                                                />
+
+                                                <Show when={!useCustomFont()}>
+                                                    <select
+                                                        value={selectedFont()}
+                                                        onChange={(e) => setSelectedFont(e.currentTarget.value)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 12px',
+                                                            background: 'rgba(0, 0, 0, 0.3)',
+                                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                            "border-radius": '8px',
+                                                            color: '#fff',
+                                                            "font-size": '14px',
+                                                            cursor: 'pointer',
+                                                            outline: 'none'
+                                                        }}
+                                                    >
+                                                        <For each={PRESET_FONTS}>
+                                                            {(font) => (
+                                                                <option value={font.value} style={{ background: '#1e293b', color: '#fff' }}>
+                                                                    {font.name}
+                                                                </option>
+                                                            )}
+                                                        </For>
+                                                    </select>
+                                                </Show>
+
+                                                <Show when={useCustomFont()}>
+                                                    <TextField
+                                                        fullWidth
+                                                        size="small"
+                                                        placeholder="Enter font name (e.g., Arial, Comic Sans MS)"
+                                                        value={customFont()}
+                                                        onChange={(e) => setCustomFont(e.target.value)}
+                                                        sx={{
+                                                            '& .MuiOutlinedInput-root': {
+                                                                '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+                                                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                                                                '&.Mui-focused fieldset': { borderColor: '#a855f7' }
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mt: 0.5, display: 'block' }}>
+                                                        Use any font installed on your PC. OBS will use this font if available.
+                                                    </Typography>
+                                                </Show>
+                                            </Box>
+
+                                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+
                                             <FormControlLabel
                                                 control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="primary" />}
                                                 label={<Box><Typography>Badges</Typography><Typography variant="caption" color="text.secondary">Subscriber, Moderator, etc.</Typography></Box>}
@@ -270,8 +363,35 @@ export default function ChatSetup() {
                                             />
                                             <FormControlLabel
                                                 control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
-                                                label="Pronouns"
+                                                label={<Box><Typography>Pronouns</Typography><Typography variant="caption" color="text.secondary">Display user pronouns</Typography></Box>}
                                             />
+                                            <Show when={showPronouns()}>
+                                                <Alert
+                                                    severity="info"
+                                                    icon={<InfoIcon />}
+                                                    sx={{
+                                                        mt: 1,
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                                                        '& .MuiAlert-message': { width: '100%' }
+                                                    }}
+                                                >
+                                                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
+                                                        Users can set their pronouns at:
+                                                    </Typography>
+                                                    <a
+                                                        href="https://pr.alejo.io/"
+                                                        target="_blank"
+                                                        style={{
+                                                            color: '#60a5fa',
+                                                            "font-weight": 600,
+                                                            "text-decoration": 'none'
+                                                        }}
+                                                    >
+                                                        pr.alejo.io →
+                                                    </a>
+                                                </Alert>
+                                            </Show>
                                         </Stack>
                                     </Paper>
 
