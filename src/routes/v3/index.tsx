@@ -90,7 +90,6 @@ export default function ChatSetup() {
     const [fadeOutDelay, setFadeOutDelay] = createSignal(30);
     const [blockedUsers, setBlockedUsers] = createSignal("");
     const [customBots, setCustomBots] = createSignal("");
-    const [showMockupBg, setShowMockupBg] = createSignal(true);
     const [selectedFont, setSelectedFont] = createSignal('Segoe UI');
     const [customFont, setCustomFont] = createSignal('');
     const [useCustomFont, setUseCustomFont] = createSignal(false);
@@ -173,20 +172,7 @@ export default function ChatSetup() {
         return url.toString();
     };
 
-    const sendTestMessage = (type: string = 'chat') => {
-        const iframe = document.querySelector('iframe');
-        if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({
-                type: 'KROMA_TEST_MSG',
-                payload: {
-                    username: 'Just_Kroma',
-                    message: type === 'highlighted' ? 'This is a highlighted message!' : 'Hello! This is a test message to preview your style. ✨',
-                    type: type,
-                    bits: type === 'cheer' ? 100 : undefined
-                }
-            }, '*');
-        }
-    };
+
 
     const handleCopy = async () => {
         const url = generateUrl();
@@ -600,16 +586,10 @@ export default function ChatSetup() {
 
                                         {/* Preview Header */}
                                         <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'rgba(0,0,0,0.2)' }}>
-                                            <Stack direction="row" spacing={2} alignItems="center">
-                                                <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, color: 'rgba(255,255,255,0.8)' }}>
-                                                    <VisibilityIcon sx={{ fontSize: 18, color: '#2DD4BF' }} />
-                                                    Live Preview
-                                                </Typography>
-                                                <FormControlLabel
-                                                    control={<Switch size="small" checked={showMockupBg()} onChange={(_, v) => setShowMockupBg(v)} color="secondary" />}
-                                                    label={<Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Mockup Background</Typography>}
-                                                />
-                                            </Stack>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, color: 'rgba(255,255,255,0.8)' }}>
+                                                <VisibilityIcon sx={{ fontSize: 18, color: '#2DD4BF' }} />
+                                                Live Preview
+                                            </Typography>
                                             <Stack direction="row" spacing={1}>
                                                 <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#EF4444' }} />
                                                 <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#F59E0B' }} />
@@ -618,15 +598,7 @@ export default function ChatSetup() {
                                         </Box>
 
                                         {/* Iframe */}
-                                        <Box sx={{
-                                            flex: 1,
-                                            position: 'relative',
-                                            bgcolor: '#000',
-                                            backgroundImage: showMockupBg() ? 'url(https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop)' : 'none',
-                                            backgroundSize: 'cover',
-                                            backgroundPosition: 'center',
-                                            transition: 'background 0.3s'
-                                        }}>
+                                        <Box sx={{ flex: 1, position: 'relative', bgcolor: '#000' }}>
                                             <Show when={previewUrl()} fallback={
                                                 <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, color: 'rgba(255,255,255,0.2)' }}>
                                                     <Typography variant="h6">Enter channel to preview</Typography>
@@ -639,27 +611,13 @@ export default function ChatSetup() {
                                                 />
                                             </Show>
 
-                                            {/* Checkerboard/Overlay */}
+                                            {/* Checkerboard for transparency */}
                                             <Box sx={{
-                                                position: 'absolute', inset: 0, zIndex: 0,
-                                                ...(showMockupBg() ? { bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'grayscale(0.5)' } : {
-                                                    backgroundImage: `linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)`,
-                                                    backgroundSize: '20px 20px',
-                                                    opacity: 0.3
-                                                })
+                                                position: 'absolute', inset: 0, zIndex: -1,
+                                                backgroundImage: `linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)`,
+                                                backgroundSize: '20px 20px',
+                                                opacity: 0.3
                                             }} />
-                                        </Box>
-
-                                        {/* Test Console */}
-                                        <Box sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.05)', bgcolor: 'rgba(0,0,0,0.2)' }}>
-                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mb: 1, display: 'block', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
-                                                Test Console
-                                            </Typography>
-                                            <Stack direction="row" spacing={1}>
-                                                <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => sendTestMessage('chat')}>Test Msg</Button>
-                                                <Button size="small" variant="outlined" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => sendTestMessage('highlighted')}>Highlight</Button>
-                                                <Button size="small" variant="outlined" sx={{ color: '#F472B6', borderColor: 'rgba(244, 114, 182, 0.2)' }} onClick={() => sendTestMessage('cheer')}>Cheer</Button>
-                                            </Stack>
                                         </Box>
 
                                     </Paper>
