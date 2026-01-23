@@ -49,21 +49,20 @@ export default function ChatSetup() {
     const theme = createTheme({
         palette: {
             mode: "dark",
-            primary: { main: '#a855f7' }, // Purple-500
+            primary: { main: '#8b5cf6' }, // Violet-500
             secondary: { main: '#10b981' }, // Emerald-500
-            background: { default: '#0f172a', paper: 'rgba(30, 41, 59, 0.7)' }
+            background: { default: '#000000', paper: '#09090b' },
+            text: {
+                primary: '#fafafa',
+                secondary: '#a1a1aa'
+            }
         },
         typography: {
-            fontFamily: '"Segoe UI", "Inter", "Roboto", sans-serif',
+            fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+            button: { fontWeight: 600, textTransform: 'none' },
         },
-        components: {
-            MuiPaper: {
-                styleOverrides: {
-                    root: {
-                        backgroundImage: 'none',
-                    }
-                }
-            }
+        shape: {
+            borderRadius: 16
         }
     });
 
@@ -170,49 +169,74 @@ export default function ChatSetup() {
                     sx={{
                         position: 'fixed',
                         inset: 0,
-                        background: 'linear-gradient(to bottom right, #0f172a, #1e1b4b)',
+                        background: '#09090b', // Zinc 950
+                        backgroundImage: 'radial-gradient(circle at 50% 0%, #1e1b4b 0%, #09090b 50%)',
                         zIndex: -2,
                     }}
                 />
                 <Box
                     sx={{
                         position: 'fixed',
-                        top: '-20%',
-                        left: '-20%',
-                        width: '60%',
-                        height: '60%',
+                        top: '-10%',
+                        left: '-10%',
+                        width: '50%',
+                        height: '50%',
                         borderRadius: '50%',
-                        background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(0,0,0,0) 70%)',
-                        filter: 'blur(80px)',
+                        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0) 70%)',
+                        filter: 'blur(100px)',
                         zIndex: -1,
-                        animation: 'blob 20s infinite alternate'
+                        opacity: 0.6,
+                        animation: 'blob 25s infinite alternate'
                     }}
                 />
                 <Box
                     sx={{
                         position: 'fixed',
-                        bottom: '-20%',
-                        right: '-20%',
-                        width: '60%',
-                        height: '60%',
+                        bottom: '-10%',
+                        right: '-10%',
+                        width: '50%',
+                        height: '50%',
                         borderRadius: '50%',
-                        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(0,0,0,0) 70%)',
-                        filter: 'blur(80px)',
+                        background: 'radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, rgba(0,0,0,0) 70%)',
+                        filter: 'blur(100px)',
                         zIndex: -1,
-                        animation: 'blob 20s infinite alternate-reverse'
+                        opacity: 0.6,
+                        animation: 'blob 25s infinite alternate-reverse'
                     }}
                 />
                 <style>{`
                     @keyframes blob {
                         0% { transform: translate(0, 0) scale(1); }
-                        100% { transform: translate(50px, 50px) scale(1.1); }
+                        100% { transform: translate(30px, -30px) scale(1.05); }
                     }
                     .glass-panel {
-                        background: rgba(30, 41, 59, 0.4);
-                        backdrop-filter: blur(16px);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 16px;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        background: rgba(9, 9, 11, 0.6);
+                        backdrop-filter: blur(24px);
+                        -webkit-backdrop-filter: blur(24px);
+                        border: 1px solid rgba(255, 255, 255, 0.06);
+                        box-shadow: 0 4px 20px -1px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.2);
+                        border-radius: 20px !important;
+                    }
+                    .styled-slider {
+                        -webkit-appearance: none;
+                        width: 100%;
+                        height: 4px;
+                        border-radius: 2px;
+                        background: rgba(255,255,255,0.1);
+                        outline: none;
+                        opacity: 0.7;
+                        transition: opacity .2s;
+                    }
+                    .styled-slider:hover { opacity: 1; }
+                    .styled-slider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 50%;
+                        background: #8b5cf6;
+                        cursor: pointer;
+                        box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
                     }
                 `}</style>
 
@@ -502,62 +526,64 @@ export default function ChatSetup() {
                             </Grid>
 
                             {/* RIGHT COLUMN: PREVIEW */}
-                            <Grid item xs={12} lg={8} sx={{ height: { lg: 'calc(100vh - 100px)' }, position: { lg: 'sticky' }, top: { lg: 100 } }}>
-                                <Paper
-                                    class="glass-panel"
-                                    sx={{
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        overflow: 'hidden',
-                                        position: 'relative'
-                                    }}
-                                >
-                                    <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <VisibilityIcon sx={{ color: '#10b981' }} /> Live Preview
-                                            <Typography component="span" variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', ml: 1 }}>
-                                                {channel() ? `(Showing channel: ${channel()})` : '(Waiting for input)'}
+                            <Grid item xs={12} lg={8}>
+                                <Box sx={{ height: { xs: 'auto', lg: 'calc(100vh - 100px)' }, position: { xs: 'static', lg: 'sticky' }, top: { lg: '100px' } }}>
+                                    <Paper
+                                        class="glass-panel"
+                                        sx={{
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            overflow: 'hidden',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <VisibilityIcon sx={{ color: '#10b981' }} /> Live Preview
+                                                <Typography component="span" variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', ml: 1 }}>
+                                                    {channel() ? `(Showing channel: ${channel()})` : '(Waiting for input)'}
+                                                </Typography>
                                             </Typography>
-                                        </Typography>
 
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#EF4444' }} />
-                                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B' }} />
-                                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#10B981' }} />
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ flex: 1, position: 'relative', background: 'black' }}>
-                                        <Show when={previewUrl()} fallback={
-                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.3)', flexDirection: 'column', gap: 2 }}>
-                                                <Typography variant="h6">Enter a channel to preview</Typography>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#EF4444' }} />
+                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B' }} />
+                                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#10B981' }} />
                                             </Box>
-                                        }>
-                                            <iframe
-                                                src={previewUrl()}
-                                                style={{
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    border: 'none',
-                                                    background: 'transparent' // Allow overlay transparency to show
-                                                }}
-                                                allow="autoplay"
-                                            />
-                                        </Show>
+                                        </Box>
 
-                                        {/* Background simulator for transparency check */}
-                                        <Box sx={{
-                                            position: 'absolute',
-                                            inset: 0,
-                                            zIndex: -1,
-                                            backgroundImage: 'linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%)',
-                                            backgroundSize: '20px 20px',
-                                            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
-                                            opacity: 0.2
-                                        }} />
-                                    </Box>
-                                </Paper>
+                                        <Box sx={{ flex: 1, position: 'relative', background: 'black' }}>
+                                            <Show when={previewUrl()} fallback={
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.3)', flexDirection: 'column', gap: 2 }}>
+                                                    <Typography variant="h6">Enter a channel to preview</Typography>
+                                                </Box>
+                                            }>
+                                                <iframe
+                                                    src={previewUrl()}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        border: 'none',
+                                                        background: 'transparent' // Allow overlay transparency to show
+                                                    }}
+                                                    allow="autoplay"
+                                                />
+                                            </Show>
+
+                                            {/* Background simulator for transparency check */}
+                                            <Box sx={{
+                                                position: 'absolute',
+                                                inset: 0,
+                                                zIndex: -1,
+                                                backgroundImage: 'linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%)',
+                                                backgroundSize: '20px 20px',
+                                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                                                opacity: 0.2
+                                            }} />
+                                        </Box>
+                                    </Paper>
+                                </Box>
                             </Grid>
                         </Grid>
                     </Container>
