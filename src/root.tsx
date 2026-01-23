@@ -14,7 +14,7 @@ import {
   Scripts,
   Title,
 } from "solid-start";
-import { NoHydration } from "solid-js/web";
+import { isServer } from "solid-js/web";
 import "./root.css";
 
 export default function Root() {
@@ -26,6 +26,7 @@ export default function Root() {
       fontFamily: '"Segoe UI", "Inter", "Roboto", sans-serif',
     }
   });
+
   return (
     <Html lang="en">
       <Head>
@@ -43,18 +44,24 @@ export default function Root() {
         />
       </Head>
       <Body>
-        <NoHydration>
-          <ThemeProvider theme={darkTheme}>
-            <CssBaseline />
-            <Suspense>
-              <ErrorBoundary>
+        <Suspense>
+          <ErrorBoundary>
+            {!isServer ? (
+              <ThemeProvider theme={darkTheme}>
+                <CssBaseline />
                 <Routes>
                   <FileRoutes />
                 </Routes>
-              </ErrorBoundary>
-            </Suspense>
-          </ThemeProvider>
-        </NoHydration>
+              </ThemeProvider>
+            ) : (
+              <div id="ssr-placeholder">
+                <Routes>
+                  <FileRoutes />
+                </Routes>
+              </div>
+            )}
+          </ErrorBoundary>
+        </Suspense>
         <Scripts />
       </Body>
     </Html>
