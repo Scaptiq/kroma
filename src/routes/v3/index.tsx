@@ -628,7 +628,7 @@ export default function ChatSetup() {
 
                     <Box sx={{ py: 3, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)' }}>
                         <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-                            Made with 💜 by <a href="https://scaptiq.com" target="_blank" style={{ color: '#F472B6', "text-decoration": 'none', "font-weight": 600 }}>scaptiq</a> • Original by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: '#2DD4BF', "text-decoration": 'none', "font-weight": 600 }}>ChatIS</a>
+                            Made with 💜 by <a href="https://www.twitch.tv/scaptiq" target="_blank" style={{ color: '#F472B6', "text-decoration": 'none', "font-weight": 600 }}>scaptiq</a> • Original by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: '#2DD4BF', "text-decoration": 'none', "font-weight": 600 }}>ChatIS</a>
                         </Typography>
                     </Box>
                 </Box>
