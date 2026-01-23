@@ -88,6 +88,8 @@ export default function ChatSetup() {
     const [emoteScale, setEmoteScale] = createSignal(1.0);
     const [fadeOutMessages, setFadeOutMessages] = createSignal(false);
     const [fadeOutDelay, setFadeOutDelay] = createSignal(30);
+    const [blockedUsers, setBlockedUsers] = createSignal("");
+    const [customBots, setCustomBots] = createSignal("");
     const [selectedFont, setSelectedFont] = createSignal('Segoe UI');
     const [customFont, setCustomFont] = createSignal('');
     const [useCustomFont, setUseCustomFont] = createSignal(false);
@@ -133,6 +135,8 @@ export default function ChatSetup() {
             params.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) params.set('fadeDelay', String(fadeOutDelay() * 1000));
         }
+        if (blockedUsers().trim()) params.set('blocked', blockedUsers().trim());
+        if (customBots().trim()) params.set('bots', customBots().trim());
 
         const queryString = params.toString();
         setPreviewUrl(`/v3/chat/${ch}?${queryString}`);
@@ -160,6 +164,8 @@ export default function ChatSetup() {
             url.searchParams.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) url.searchParams.set('fadeDelay', String(fadeOutDelay() * 1000));
         }
+        if (blockedUsers().trim()) url.searchParams.set('blocked', blockedUsers().trim());
+        if (customBots().trim()) url.searchParams.set('bots', customBots().trim());
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') url.searchParams.set('font', font);
 
@@ -469,9 +475,28 @@ export default function ChatSetup() {
 
                                                     <Box>
                                                         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Filter</Typography>
-                                                        <Stack spacing={1}>
-                                                            <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands (Exclamations)" />
-                                                            <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots (Streamelements, etc)" />
+                                                        <Stack spacing={2}>
+                                                            <TextField
+                                                                fullWidth size="small"
+                                                                label="Block Users (comma separated)"
+                                                                placeholder="user1, user2"
+                                                                value={blockedUsers()}
+                                                                onChange={(e) => setBlockedUsers(e.target.value)}
+                                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)' } }}
+                                                            />
+                                                            <TextField
+                                                                fullWidth size="small"
+                                                                label="Hide Custom Bots (comma separated)"
+                                                                placeholder="bot1, bot2"
+                                                                value={customBots()}
+                                                                onChange={(e) => setCustomBots(e.target.value)}
+                                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)' } }}
+                                                            />
+
+                                                            <Box>
+                                                                <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands (Exclamations)" />
+                                                                <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots (Streamelements, etc)" />
+                                                            </Box>
                                                         </Stack>
                                                     </Box>
                                                 </Stack>
@@ -599,9 +624,9 @@ export default function ChatSetup() {
                         </Grid>
                     </Container>
 
-                    <Box sx={{ py: 3, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
-                            Made with 💜 by scaptiq
+                    <Box sx={{ py: 3, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)' }}>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
+                            Original by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: 'inherit', "text-decoration": 'none' }}>ChatIS</a> • Redesigned by <a href="https://scaptiq.com" target="_blank" style={{ color: 'inherit', "text-decoration": 'none' }}>scaptiq</a>
                         </Typography>
                     </Box>
                 </Box>

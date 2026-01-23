@@ -50,6 +50,8 @@ interface ChatConfig {
     fontSize: number;
     fontFamily: string;
     emoteScale: number;
+    blockedUsers: string[];
+    customBots: string[];
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -69,6 +71,8 @@ const DEFAULT_CONFIG: ChatConfig = {
     fontSize: 16,
     fontFamily: 'Segoe UI',
     emoteScale: 1.0,
+    blockedUsers: [],
+    customBots: [],
 };
 
 // Known bot usernames
@@ -118,6 +122,8 @@ export default function Chat() {
         fadeOutMessages: searchParams.fadeOut === 'true',
         fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
         emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
+        blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
+        customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
     };
 
     // Scroll to bottom when new messages arrive
@@ -273,6 +279,16 @@ export default function Chat() {
 
         // Filter bots
         if (config.hideBots && KNOWN_BOTS.has(username.toLowerCase())) {
+            return;
+        }
+
+        // Filter custom blocked users
+        if (config.blockedUsers.includes(username.toLowerCase())) {
+            return;
+        }
+
+        // Filter custom bots
+        if (config.customBots.includes(username.toLowerCase())) {
             return;
         }
 
