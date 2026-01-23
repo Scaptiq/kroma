@@ -612,10 +612,10 @@ export default function Chat() {
                                     </Show>
 
                                     {/* Username Group */}
-                                    <div class="flex items-baseline gap-1.5 shrink-0">
+                                    <div class="flex items-baseline shrink-0">
                                         {/* Pronouns */}
                                         <Show when={msg.pronouns && config.showPronouns}>
-                                            <span class="pronouns-badge">
+                                            <span class="pronouns-badge mr-1.5">
                                                 {msg.pronouns}
                                             </span>
                                         </Show>
