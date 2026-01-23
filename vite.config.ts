@@ -9,10 +9,10 @@ export default defineConfig({
     suidPlugin(),
     solid({
       ssr: false,
-      // Disabling prerendering prevents the build from hanging on index.html
-      // because Kroma is a client-side SPA.
       // @ts-ignore
       prerender: false,
+      // @ts-ignore
+      prerenderRoutes: [],
       adapter: process.env.npm_lifecycle_event === 'build' ? cloudflare({}) : node()
     }),
   ],
