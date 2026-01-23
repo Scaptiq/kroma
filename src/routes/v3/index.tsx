@@ -79,6 +79,9 @@ export default function ChatSetup() {
     const [hideBots, setHideBots] = createSignal(false);
     const [maxMessages, setMaxMessages] = createSignal(50);
     const [fontSize, setFontSize] = createSignal(16);
+    const [emoteScale, setEmoteScale] = createSignal(1.0);
+    const [fadeOutMessages, setFadeOutMessages] = createSignal(false);
+    const [fadeOutDelay, setFadeOutDelay] = createSignal(30);
     const [selectedFont, setSelectedFont] = createSignal('Segoe UI');
     const [customFont, setCustomFont] = createSignal('');
     const [useCustomFont, setUseCustomFont] = createSignal(false);
@@ -118,6 +121,11 @@ export default function ChatSetup() {
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') params.set('font', font);
         if (fontSize() !== 16) params.set('fontSize', String(fontSize()));
+        if (emoteScale() !== 1.0) params.set('emoteScale', String(emoteScale()));
+        if (fadeOutMessages()) {
+            params.set('fadeOut', 'true');
+            if (fadeOutDelay() !== 30) params.set('fadeDelay', String(fadeOutDelay() * 1000));
+        }
 
         const queryString = params.toString();
         setPreviewUrl(`/v3/chat/${ch}?${queryString}`);
@@ -140,6 +148,11 @@ export default function ChatSetup() {
         if (hideBots()) url.searchParams.set('hideBots', 'true');
         if (maxMessages() !== 50) url.searchParams.set('maxMessages', String(maxMessages()));
         if (fontSize() !== 16) url.searchParams.set('fontSize', String(fontSize()));
+        if (emoteScale() !== 1.0) url.searchParams.set('emoteScale', String(emoteScale()));
+        if (fadeOutMessages()) {
+            url.searchParams.set('fadeOut', 'true');
+            if (fadeOutDelay() !== 30) url.searchParams.set('fadeDelay', String(fadeOutDelay() * 1000));
+        }
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') url.searchParams.set('font', font);
 
@@ -381,6 +394,18 @@ export default function ChatSetup() {
                                                 control={<Switch checked={showEmotes()} onChange={(_, v) => setShowEmotes(v)} color="primary" />}
                                                 label={<Box><Typography>Emotes</Typography><Typography variant="caption" color="text.secondary">7TV, BTTV, FFZ support</Typography></Box>}
                                             />
+                                            <Show when={showEmotes()}>
+                                                <Box sx={{ pl: 4, mb: 2 }}>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary">Emote Scale: {emoteScale().toFixed(1)}x</Typography>
+                                                    <input
+                                                        type="range"
+                                                        min="0.5" max="3.0" step="0.1"
+                                                        value={emoteScale()}
+                                                        onInput={(e) => setEmoteScale(parseFloat(e.currentTarget.value))}
+                                                        class="styled-slider"
+                                                    />
+                                                </Box>
+                                            </Show>
                                             <FormControlLabel
                                                 control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="primary" />}
                                                 label={<Box><Typography>Name Paints</Typography><Typography variant="caption" color="text.secondary">7TV Gradient Usernames</Typography></Box>}
@@ -425,6 +450,19 @@ export default function ChatSetup() {
                                             <FormControlLabel control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />} label="Shared Chat (Stream Together)" />
                                             <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Message Replies" />
                                             <FormControlLabel control={<Switch checked={showTimestamps()} onChange={(_, v) => setShowTimestamps(v)} color="secondary" />} label="Show Timestamps" />
+                                            <FormControlLabel control={<Switch checked={fadeOutMessages()} onChange={(_, v) => setFadeOutMessages(v)} color="secondary" />} label="Fade Out Messages" />
+                                            <Show when={fadeOutMessages()}>
+                                                <Box sx={{ pl: 4, mb: 1 }}>
+                                                    <Typography gutterBottom variant="caption" color="text.secondary">Fade Delay: {fadeOutDelay()}s</Typography>
+                                                    <input
+                                                        type="range"
+                                                        min="5" max="120" step="5"
+                                                        value={fadeOutDelay()}
+                                                        onInput={(e) => setFadeOutDelay(parseInt(e.currentTarget.value))}
+                                                        class="styled-slider"
+                                                    />
+                                                </Box>
+                                            </Show>
                                             <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands" />
                                             <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots" />
                                         </Stack>

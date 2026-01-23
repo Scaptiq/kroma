@@ -92,8 +92,24 @@ body {
     display: inline-block;
     vertical-align: middle;
     margin: -4px 2px;
+    height: calc(1.2em * var(--emote-scale, 1));
     /* Pull emotes slightly to align with text baseline */
     transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+.chat-message[data-fading="true"] {
+    animation: slideIn 0.2s ease-out both, fadeOut 1s linear forwards;
+    animation-delay: 0s, var(--fade-delay);
 }
 
 .emote:hover {

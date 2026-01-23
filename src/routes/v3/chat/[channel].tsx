@@ -49,6 +49,7 @@ interface ChatConfig {
     fadeOutDelay: number;
     fontSize: number;
     fontFamily: string;
+    emoteScale: number;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -67,6 +68,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     fadeOutDelay: 30000,
     fontSize: 16,
     fontFamily: 'Segoe UI',
+    emoteScale: 1.0,
 };
 
 // Known bot usernames
@@ -113,6 +115,9 @@ export default function Chat() {
         maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
         fontSize: parseInt(searchParams.fontSize || '16') || 16,
         fontFamily: searchParams.font || 'Segoe UI',
+        fadeOutMessages: searchParams.fadeOut === 'true',
+        fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
+        emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
     };
 
     // Scroll to bottom when new messages arrive
@@ -544,7 +549,9 @@ export default function Chat() {
                 class="fixed inset-0 pointer-events-none p-4 flex items-end overflow-hidden"
                 style={{
                     "font-size": `${config.fontSize}px`,
-                    "font-family": `"${config.fontFamily}", "Segoe UI", "Inter", sans-serif`
+                    "font-family": `"${config.fontFamily}", "Segoe UI", "Inter", sans-serif`,
+                    "--emote-scale": config.emoteScale,
+                    "--fade-delay": `${config.fadeOutDelay / 1000}s`
                 }}
             >
                 <ul
@@ -555,8 +562,9 @@ export default function Chat() {
                         {(msg, index) => (
                             <li
                                 class={getMessageClass(msg)}
+                                data-fading={config.fadeOutMessages ? "true" : "false"}
                                 style={{
-                                    "animation-delay": `${index() * 20}ms`,
+                                    "animation-delay": `${index() * 20}ms, var(--fade-delay)`,
                                     ...(msg.isAction ? { color: msg.color } : {})
                                 }}
                             >
