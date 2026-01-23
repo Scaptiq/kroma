@@ -32,7 +32,7 @@ Kroma is designed to be **beautiful**, **performant**, and **inclusive**. It ren
 
 ## 🚀 Quick Start
 
-1. Go to the **Setup Page** (Hosted URL coming soon).
+1. Go to the **Setup Page** at [kroma.scaptiq.live](https://kroma.scaptiq.live).
 2. Enter your **Twitch Username**.
 3. Customize your settings in the **Appearance** tab.
 4. Drag the **"Drag to OBS"** button directly into your OBS Sources list.

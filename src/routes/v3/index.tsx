@@ -32,6 +32,7 @@ import InfoIcon from "@suid/icons-material/Info";
 import TextFieldsIcon from "@suid/icons-material/TextFields";
 
 import MySiteTitle from "~/components/MySiteTitle";
+import GradientSlider from "~/components/GradientSlider";
 
 // Preset fonts that users can choose from
 const PRESET_FONTS = [
@@ -220,41 +221,7 @@ export default function ChatSetup() {
                     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
                     /* Premium Slider */
-                    .styled-slider {
-                        -webkit-appearance: none;
-                        width: 100%;
-                        height: 6px;
-                        border-radius: 10px;
-                        background: rgba(255,255,255,0.1);
-                        outline: none;
-                        margin-top: 8px;
-                        margin-bottom: 8px;
-                        transition: background 0.3s;
-                    }
-                    .styled-slider:hover {
-                        background: rgba(255,255,255,0.2);
-                    }
-                    .styled-slider::-webkit-slider-thumb {
-                        -webkit-appearance: none;
-                        appearance: none;
-                        width: 20px;
-                        height: 20px;
-                        border-radius: 50%;
-                        background: #fff;
-                        cursor: pointer;
-                        box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                        border: 2px solid transparent;
-                    }
-                    .styled-slider::-webkit-slider-thumb:hover {
-                        transform: scale(1.2);
-                        background: #fff;
-                        box-shadow: 0 0 20px rgba(244, 114, 182, 0.6);
-                    }
-                    .styled-slider::-webkit-slider-thumb:active {
-                        transform: scale(0.95);
-                        box-shadow: 0 0 10px rgba(244, 114, 182, 0.8);
-                    }
+
 
                     /* Glassmorphism Panel */
                     .glass-panel {
@@ -420,7 +387,7 @@ export default function ChatSetup() {
                                                                 <Typography variant="body2" color="text.secondary">Font Size</Typography>
                                                                 <Typography variant="body2" fontWeight={600}>{fontSize()}px</Typography>
                                                             </Box>
-                                                            <input type="range" min="12" max="48" value={fontSize()} onInput={(e) => setFontSize(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                            <GradientSlider min={12} max={48} value={fontSize()} onChange={setFontSize} />
                                                         </Box>
 
                                                         <FormControlLabel
@@ -464,7 +431,7 @@ export default function ChatSetup() {
                                                                     </Show>
                                                                 </Box>
                                                                 <Show when={showEmotes()}>
-                                                                    <input type="range" min="0.5" max="4.0" step="0.1" value={emoteScale()} onInput={(e) => setEmoteScale(parseFloat(e.currentTarget.value))} class="styled-slider" />
+                                                                    <GradientSlider min={0.5} max={4.0} step={0.1} value={emoteScale()} onChange={setEmoteScale} />
                                                                 </Show>
                                                             </Box>
                                                         </Stack>
@@ -489,13 +456,13 @@ export default function ChatSetup() {
                                                                         <Typography variant="caption" color="text.secondary">Disappear after</Typography>
                                                                         <Typography variant="caption" fontWeight={600}>{fadeOutDelay()} seconds</Typography>
                                                                     </Box>
-                                                                    <input type="range" min="5" max="120" step="5" value={fadeOutDelay()} onInput={(e) => setFadeOutDelay(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                                    <GradientSlider min={5} max={120} step={5} value={fadeOutDelay()} onChange={setFadeOutDelay} />
                                                                 </Box>
                                                             </Show>
                                                         </Box>
 
                                                         <Typography gutterBottom variant="body2">Max Messages On Screen: {maxMessages()}</Typography>
-                                                        <input type="range" min="5" max="100" value={maxMessages()} onInput={(e) => setMaxMessages(parseInt(e.currentTarget.value))} class="styled-slider" />
+                                                        <GradientSlider min={5} max={100} value={maxMessages()} onChange={setMaxMessages} />
                                                     </Box>
 
                                                     <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
