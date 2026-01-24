@@ -267,12 +267,11 @@ export default function ChatSetup() {
                                 <Stack direction="row" alignItems="center" spacing={2}>
                                     <Box sx={{
                                         width: 44, height: 44,
-                                        borderRadius: '14px',
-                                        background: 'linear-gradient(135deg, #F472B6, #C084FC, #2DD4BF)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
                                         boxShadow: '0 0 20px rgba(192, 132, 252, 0.4)'
                                     }}>
-                                        <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff' }}>K</Typography>
+                                        <img src="/logo.png" style={{ width: '100%', height: '100%', "object-fit": 'cover' }} alt="Kroma Logo" />
                                     </Box>
                                     <Box>
                                         <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
