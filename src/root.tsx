@@ -32,7 +32,7 @@ export default function Root() {
     <Html lang="en">
       <Head>
         <Title>Kroma</Title>
-        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="icon" type="image/png" href="/kroma-favicon.png" />
         <Meta charset="utf-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1" />
         <link

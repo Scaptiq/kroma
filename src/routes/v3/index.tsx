@@ -271,7 +271,7 @@ export default function ChatSetup() {
                                         overflow: 'hidden',
                                         boxShadow: '0 0 20px rgba(192, 132, 252, 0.4)'
                                     }}>
-                                        <img src="/logo.png" style={{ width: '100%', height: '100%', "object-fit": 'cover' }} alt="Kroma Logo" />
+                                        <img src="/kroma-logo.png" style={{ width: '100%', height: '100%', "object-fit": 'cover' }} alt="Kroma Logo" />
                                     </Box>
                                     <Box>
                                         <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
