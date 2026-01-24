@@ -1,7 +1,7 @@
 # 🌈 Kroma
 
 <div align="center">
-  <img src="public/favicon.png" width="100" />
+  <img src="public/logo.png" width="100" />
   <h1>Kroma Chat</h1>
   <p>The most inclusive, modern, and high-performance Twitch chat overlay.</p>
 </div>

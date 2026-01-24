@@ -33,6 +33,7 @@ export default function Root() {
       <Head>
         <Title>Kroma</Title>
         <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <Meta charset="utf-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1" />
         <link
