@@ -541,18 +541,23 @@ export default function ChatSetup() {
 
                                             <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', pt: 2, textAlign: 'center' }}>
                                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block' }}>
-                                                    Drag the button below directly into OBS Scenes
+                                                    Drag the button below directly into OBS Scenes (Rec. 450x800)
                                                 </Typography>
                                                 <a
                                                     href={generateUrl()}
                                                     draggable={true}
                                                     onDragStart={(e) => {
                                                         if (e.dataTransfer) {
-                                                            const url = generateUrl();
+                                                            const urlStr = generateUrl();
+                                                            const urlObj = new URL(urlStr);
+                                                            urlObj.searchParams.set("width", "450");
+                                                            urlObj.searchParams.set("height", "800");
+                                                            const url = urlObj.toString();
+
                                                             e.dataTransfer.setData("text/plain", url);
                                                             e.dataTransfer.setData("text/uri-list", url);
-                                                            e.dataTransfer.setData("text/html", `<a href="\${url}">Kroma Chat</a>`);
-                                                            e.dataTransfer.setData("text/x-moz-url", `\${url}\nKroma Chat`);
+                                                            e.dataTransfer.setData("text/html", `<a href="${url}">Kroma Chat</a>`);
+                                                            e.dataTransfer.setData("text/x-moz-url", `${url}\nKroma Chat`);
                                                             const img = new Image();
                                                             img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
                                                             e.dataTransfer.setDragImage(img, 0, 0);
