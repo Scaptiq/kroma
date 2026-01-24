@@ -514,9 +514,12 @@ export default function ChatSetup() {
                                                 Your Overlay URL
                                             </Typography>
 
-                                            <Box sx={{ p: 2, bgcolor: '#0f0c29', borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', mb: 2, fontFamily: 'monospace', fontSize: '0.8rem', color: '#2DD4BF', wordBreak: 'break-all' }}>
+                                            <Box sx={{ p: 2, bgcolor: '#0f0c29', borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', mb: 1, fontFamily: 'monospace', fontSize: '0.8rem', color: '#2DD4BF', wordBreak: 'break-all' }}>
                                                 {generateUrl()}
                                             </Box>
+                                            <Typography variant="caption" sx={{ display: 'block', mb: 3, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+                                                Recommended Resolution: 450x800 (Included in drag data)
+                                            </Typography>
 
                                             <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
                                                 <Button
@@ -541,7 +544,7 @@ export default function ChatSetup() {
 
                                             <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', pt: 2, textAlign: 'center' }}>
                                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block' }}>
-                                                    Drag the button below directly into OBS Scenes (Rec. 450x800)
+                                                    Or drag to OBS
                                                 </Typography>
                                                 <a
                                                     href={generateUrl()}
