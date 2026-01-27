@@ -1,5 +1,5 @@
 import { useParams, useSearchParams } from "solid-start";
-import { createSignal, onMount, onCleanup, For, Show, createEffect } from "solid-js";
+import { createSignal, onMount, onCleanup, For, Show, createEffect, createMemo } from "solid-js";
 import tmi from "tmi.js";
 import MySiteTitle from "~/components/MySiteTitle";
 
@@ -105,8 +105,8 @@ export default function Chat() {
     let globalFFZ: Emote[] = [];
     let channelFFZ: Emote[] = [];
 
-    // Parse config from URL params
-    const config: ChatConfig = {
+    // Parse config from URL params reactively
+    const config = createMemo<ChatConfig>(() => ({
         ...DEFAULT_CONFIG,
         showPronouns: searchParams.pronouns !== 'false',
         showBadges: searchParams.badges !== 'false',
@@ -116,6 +116,7 @@ export default function Chat() {
         showNamePaints: searchParams.paints !== 'false',
         hideCommands: searchParams.hideCommands === 'true',
         hideBots: searchParams.hideBots === 'true',
+        showReplies: searchParams.replies !== 'false',
         maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
         fontSize: parseInt(searchParams.fontSize || '16') || 16,
         fontFamily: searchParams.font || 'Segoe UI',
@@ -124,7 +125,7 @@ export default function Chat() {
         emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
         blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
         customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-    };
+    }));
 
     // Scroll to bottom when new messages arrive
     createEffect(() => {
@@ -161,7 +162,7 @@ export default function Chat() {
         // First, handle Twitch native emotes
         let parts: { start: number; end: number; type: 'emote'; content: ParsedPart }[] = [];
 
-        if (twitchEmotes && config.showEmotes) {
+        if (twitchEmotes && config().showEmotes) {
             Object.entries(twitchEmotes).forEach(([id, ranges]) => {
                 ranges.forEach(range => {
                     const [start, end] = range.split("-").map(Number);
@@ -201,7 +202,7 @@ export default function Chat() {
                 }
 
                 // Check for third-party emotes
-                if (config.showEmotes) {
+                if (config().showEmotes) {
                     const emote = findEmote(trimmed);
                     if (emote) {
                         const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
@@ -247,7 +248,7 @@ export default function Chat() {
         const currentChannelId = channelId();
 
         // Twitch badges
-        if (twitchBadges && config.showBadges) {
+        if (twitchBadges && config().showBadges) {
             Object.entries(twitchBadges).forEach(([name, version]) => {
                 if (!version) return;
                 const url = getTwitchBadgeUrl(name, String(version), currentChannelId || undefined);
@@ -278,22 +279,22 @@ export default function Chat() {
         const userId = tags['user-id'] || '';
 
         // Filter bots
-        if (config.hideBots && KNOWN_BOTS.has(username.toLowerCase())) {
+        if (config().hideBots && KNOWN_BOTS.has(username.toLowerCase())) {
             return;
         }
 
         // Filter custom blocked users
-        if (config.blockedUsers.includes(username.toLowerCase())) {
+        if (config().blockedUsers.includes(username.toLowerCase())) {
             return;
         }
 
         // Filter custom bots
-        if (config.customBots.includes(username.toLowerCase())) {
+        if (config().customBots.includes(username.toLowerCase())) {
             return;
         }
 
         // Filter commands
-        if (config.hideCommands && message.startsWith('!')) {
+        if (config().hideCommands && message.startsWith('!')) {
             return;
         }
 
@@ -319,7 +320,7 @@ export default function Chat() {
 
         // Parse reply info
         let reply: ReplyInfo | undefined;
-        if (tags['reply-parent-msg-id'] && config.showReplies) {
+        if (tags['reply-parent-msg-id'] && config().showReplies) {
             reply = {
                 parentMsgId: tags['reply-parent-msg-id'],
                 parentUserId: tags['reply-parent-user-id'] || '',
@@ -361,14 +362,14 @@ export default function Chat() {
         // Add message
         setMessages(prev => {
             const updated = [...prev, newMessage];
-            if (updated.length > config.maxMessages) {
-                return updated.slice(-config.maxMessages);
+            if (updated.length > config().maxMessages) {
+                return updated.slice(-config().maxMessages);
             }
             return updated;
         });
 
         // Async enhancements
-        if (config.showPronouns) {
+        if (config().showPronouns) {
             getUserPronouns(username).then(pronouns => {
                 if (!keepAlive || !pronouns) return;
                 setMessages(prev => prev.map(m =>
@@ -377,7 +378,7 @@ export default function Chat() {
             });
         }
 
-        if (config.showNamePaints) {
+        if (config().showNamePaints) {
             get7TVUserPaint(userId).then(paint => {
                 if (!keepAlive || !paint) return;
                 const { style } = getNamePaintStyles(paint);
@@ -388,7 +389,7 @@ export default function Chat() {
         }
 
         // Fetch source channel name for shared chat
-        if (isShared && sourceRoomId && config.showSharedChat) {
+        if (isShared && sourceRoomId && config().showSharedChat) {
             getChannelByRoomId(sourceRoomId).then(channelInfo => {
                 if (!keepAlive || !channelInfo) return;
                 setMessages(prev => prev.map(m =>
@@ -456,7 +457,7 @@ export default function Chat() {
         if (msg.type === 'raid') classes.push('chat-message--raid');
         if (msg.type === 'announcement') classes.push('chat-message--announcement');
         if (msg.isHighlighted) classes.push('chat-message--highlighted');
-        if (msg.isFirstMessage && config.showFirstMessage) classes.push('chat-message--first');
+        if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
         return classes.join(' ');
     };
@@ -566,10 +567,10 @@ export default function Chat() {
             <div
                 class="fixed inset-0 pointer-events-none p-4 flex items-end overflow-hidden"
                 style={{
-                    "font-size": `${config.fontSize}px`,
-                    "font-family": `"${config.fontFamily}", "Segoe UI", "Inter", sans-serif`,
-                    "--emote-scale": config.emoteScale,
-                    "--fade-delay": `${config.fadeOutDelay / 1000}s`
+                    "--chat-font-size": `${config().fontSize}px`,
+                    "font-family": `"${config().fontFamily}", "Segoe UI", "Inter", sans-serif`,
+                    "--emote-scale": config().emoteScale,
+                    "--fade-delay": `${config().fadeOutDelay / 1000}s`
                 }}
             >
                 <ul
@@ -580,14 +581,14 @@ export default function Chat() {
                         {(msg, index) => (
                             <li
                                 class={getMessageClass(msg)}
-                                data-fading={config.fadeOutMessages ? "true" : "false"}
+                                data-fading={config().fadeOutMessages ? "true" : "false"}
                                 style={{
                                     "animation-delay": `${index() * 20}ms, var(--fade-delay)`,
                                     ...(msg.isAction ? { color: msg.color } : {})
                                 }}
                             >
                                 {/* Reply Context */}
-                                <Show when={msg.reply && config.showReplies}>
+                                <Show when={msg.reply && config().showReplies}>
                                     <div class="reply-context">
                                         <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -598,7 +599,7 @@ export default function Chat() {
                                 </Show>
 
                                 {/* First Message Indicator */}
-                                <Show when={msg.isFirstMessage && config.showFirstMessage}>
+                                <Show when={msg.isFirstMessage && config().showFirstMessage}>
                                     <div class="first-message-indicator mb-1 inline-block">
                                         First Message
                                     </div>
@@ -606,14 +607,14 @@ export default function Chat() {
 
                                 <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
                                     {/* Timestamp */}
-                                    <Show when={config.showTimestamps}>
+                                    <Show when={config().showTimestamps}>
                                         <span class="timestamp self-center">
                                             {formatTime(msg.timestamp)}
                                         </span>
                                     </Show>
 
                                     {/* Shared Chat Badge */}
-                                    <Show when={msg.isShared && config.showSharedChat}>
+                                    <Show when={msg.isShared && config().showSharedChat}>
                                         <div class="mr-2 flex items-center h-[20px] self-center">
                                             <Show when={msg.sourceLogo}>
                                                 <img
@@ -627,7 +628,7 @@ export default function Chat() {
                                     </Show>
 
                                     {/* Badges */}
-                                    <Show when={config.showBadges && msg.badges.length > 0}>
+                                    <Show when={config().showBadges && msg.badges.length > 0}>
                                         <div class="flex gap-0.5 self-center shrink-0 select-none">
                                             <For each={msg.badges}>
                                                 {(badge) => (
@@ -646,7 +647,7 @@ export default function Chat() {
                                     {/* Username Group */}
                                     <div class="flex items-baseline shrink-0">
                                         {/* Pronouns */}
-                                        <Show when={msg.pronouns && config.showPronouns}>
+                                        <Show when={msg.pronouns && config().showPronouns}>
                                             <span class="pronouns-badge mr-1.5">
                                                 {msg.pronouns}
                                             </span>
