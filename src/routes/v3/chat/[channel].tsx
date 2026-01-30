@@ -487,6 +487,7 @@ export default function Chat() {
         }
 
         const currentChannelId = channelId();
+        console.log(`📺 Using Channel ID: ${currentChannelId}`);
 
         // Fetch all resources in parallel
         const [
@@ -700,6 +701,11 @@ export default function Chat() {
                                                             class={`emote ${part.isZeroWidth ? 'emote--zero-width' : ''}`}
                                                             loading="lazy"
                                                         />
+                                                    ) : part.type === 'cheer' ? (
+                                                        <span class="inline-flex items-center gap-0.5 mx-0.5" style={{ color: part.color }}>
+                                                            <img src={part.url} alt={part.prefix} class="h-5 w-5" loading="lazy" />
+                                                            <span class="font-bold text-sm">{part.bits}</span>
+                                                        </span>
                                                     ) : null}
                                                 </>
                                             )}

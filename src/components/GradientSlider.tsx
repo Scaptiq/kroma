@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal } from "solid-js";
 import { Box } from "@suid/material";
 
 interface GradientSliderProps {

@@ -223,6 +223,22 @@ body {
     border-left: 4px solid #ffffff;
 }
 
+/* First Message Indicator */
+.first-message-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f472b6, #c084fc);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.7em;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.4);
+}
+
 /* Text Selection */
 ::selection {
     background: rgba(169, 112, 255, 0.5);
