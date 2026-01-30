@@ -1,104 +1,156 @@
 # 🌈 Kroma
 
 <div align="center">
-  <img src="public/kroma-logo.png" width="100" />
+  <img src="public/kroma-logo.png" width="120" />
   <h1>Kroma Chat</h1>
-  <p>The most inclusive, modern, and high-performance Twitch chat overlay.</p>
+  <p><strong>The most inclusive Twitch chat overlay.</strong></p>
+  <p>Built for streamers who care about identity, accessibility, and aesthetics.</p>
 </div>
 
 ---
 
-## ✨ Features
+## 💡 What is Kroma?
 
-Kroma is designed to be **beautiful**, **performant**, and **inclusive**. It renders your chat with stunning glassmorphism effects while prioritizing identity and accessibility.
+**Kroma** is a browser-based chat overlay for OBS that displays your Twitch chat with a focus on **inclusivity** and **modern design**. Unlike other overlays, Kroma puts identity first:
 
-### 🏳️‍🌈 Inclusive & Accessible
-- **Pronouns Support**: First-class integration with [Alejo.io](https://pr.alejo.io) to display user pronouns automatically.
-- **Color-Coded Pronoun Badges**: Each pronoun type gets a unique color — he/him (blue), she/her (pink), they/them (purple), and more!
-- **🌈 Pride Mode**: Optional animated rainbow gradient badges for ALL pronouns — celebrate identity with style!
-- **Identity Friendly**: Built to respect and highlight user identities.
-- **Accessibility**: High contrast modes, adjustable font sizes, and clear typography.
+- 🏳️‍🌈 **Pronoun badges** are color-coded by default and can be switched to animated pride rainbows
+- 🎨 **7TV paints** and emotes render beautifully
+- 👥 **Shared Chat** (Stream Together) is fully supported — the *only* overlay that does this
 
-### 💬 Universal Chat
-- **Shared Chat Support**: The **only** overlay with native support for Twitch's "Stream Together" (Guest Star) shared chats.
-- **Rich Emotes**: Seamless support for **7TV**, **BetterTTV (BTTV)**, and **FrankerFaceZ (FFZ)**.
-- **Name Paints**: Renders 7TV gradient usernames/paints for that premium feel.
-- **Reply Threading**: Shows reply context for threaded conversations.
-- **First Message Indicator**: Highlights first-time chatters in your channel.
+Whether you're a small streamer or a major broadcaster, Kroma makes your chat look premium while respecting your community's identities.
 
-### 🎨 Modern Personalization
-- **Glassmorphism Design**: Sleek, frosted-glass aesthetics that look great on any stream.
-- **Custom Fonts**: Choose from preset fonts or use ANY custom Google Font.
-- **Emote Scaling**: Make emotes huge (up to 3x size) for maximum hype.
-- **Smart Fading**: Automatically fade out old messages to keep your overlay clean.
-- **Custom Filters**: Hide specific users, commands, or custom bots with a simple blocklist.
+---
 
+## ✨ Key Features
+
+### 🏳️‍🌈 Inclusive by Design
+
+| Feature | Description |
+|---------|-------------|
+| **Pronouns** | Automatic integration with [Alejo.io](https://pr.alejo.io) — no setup needed |
+| **Color-Coded Badges** | Each pronoun gets its own unique color (see table below) |
+| **Pride Mode** | Toggle animated rainbow badges for everyone 🌈 |
+| **First-Time Chatter** | Highlights users chatting for the first time |
+
+### 🎨 Pronoun Badge Colors
+
+| Pronoun | Color | Style |
+|---------|-------|-------|
+| he/him | 🔵 Blue | Solid |
+| she/her | 💗 Pink | Solid |
+| they/them | 💜 Purple | Solid |
+| it/its | 🩵 Teal | Solid |
+| he/they | 🔵→💜 | Gradient |
+| she/they | 💗→💜 | Gradient |
+| ae/aer | 🩵 Cyan | Solid |
+| e/em | 💜 Violet | Solid |
+| fae/faer | 🩷 Fuchsia | Solid |
+| per/per | 🧡 Amber | Solid |
+| ve/ver | 💚 Emerald | Solid |
+| xe/xem | 💙 Indigo | Solid |
+| zie/hir | 🩷 Light Pink | Solid |
+| any | 🌈 Rainbow | Animated |
+| other / ask | ⬜ Gray | Solid |
+
+> **Pride Mode**: When enabled, *all* pronoun badges become animated rainbow gradients!
+
+---
+
+### 💬 Complete Chat Support
+
+| Feature | Description |
+|---------|-------------|
+| **Shared Chat** | Native support for Twitch "Stream Together" — shows which channel each message came from |
+| **7TV / BTTV / FFZ** | Full emote support from all major providers |
+| **Name Paints** | Renders 7TV gradient usernames |
+| **Reply Threading** | Shows reply context for threaded conversations |
+| **Bits & Cheers** | Displays cheer emotes and bit amounts |
+
+---
+
+### 🎨 Personalization
+
+| Feature | Description |
+|---------|-------------|
+| **Glassmorphism** | Sleek frosted-glass aesthetic |
+| **Custom Fonts** | Use any Google Font or system font |
+| **Emote Scaling** | Scale emotes up to 3x size |
+| **Message Fading** | Automatically fade out old messages |
+| **Bot Filtering** | Hide known bots and custom accounts |
+| **Command Hiding** | Optionally hide `!commands` |
 
 ---
 
 ## 🚀 Quick Start
 
-1. Go to the **Setup Page** at [kroma.scaptiq.live](https://kroma.scaptiq.live).
-2. Enter your **Twitch Username**.
-3. Customize your settings in the **General**, **Visuals**, and **Filters** tabs.
-4. Drag the **"Drag to OBS"** button directly into your OBS Sources list (recommended: 450x800).
+1. Go to **[kroma.scaptiq.live](https://kroma.scaptiq.live)**
+2. Enter your **Twitch username**
+3. Customize settings in **General**, **Visuals**, and **Filters** tabs
+4. **Drag the "Drag to OBS" button** directly into your OBS Sources
+
+> **Recommended browser source size:** 450×800
 
 ---
 
-## 🛠 Advanced Features
+## 🛠 URL Parameters
 
-### URL Parameters
-You can manually configure your overlay via URL parameters:
+For advanced users, you can configure the overlay via URL:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `pronouns` | boolean | `true` | Show/hide pronouns. |
-| `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow pride badges for pronouns. |
-| `badges` | boolean | `true` | Show/hide subscriber/bit badges. |
-| `emotes` | boolean | `true` | Show/hide 3rd party emotes. |
-| `emoteScale`| number | `1.0` | Scale multiplier for emotes (e.g. `1.5` = 150%). |
-| `paints` | boolean | `true` | Show/hide 7TV name paints. |
-| `shared` | boolean | `true` | Show/hide Shared Chat (Guest Star) source icons. |
-| `replies` | boolean | `true` | Show/hide reply threading. |
-| `timestamps` | boolean | `false` | Show/hide message timestamps. |
-| `fadeOut` | boolean | `false` | Enable message fading. |
-| `fadeDelay` | number | `30000` | Delay in ms before fading out (if enabled). |
-| `font` | string | `Segoe UI` | Font family name (supports Google Fonts). |
-| `fontSize` | number | `16` | Font size in pixels. |
-| `maxMessages` | number | `50` | Maximum messages to display. |
-| `hideCommands` | boolean | `false` | Hide messages starting with `!`. |
-| `hideBots` | boolean | `false` | Hide known bot accounts. |
-| `blocked` | string | `` | Comma-separated list of usernames to hide. |
-| `bots` | string | `` | Comma-separated list of custom bot usernames to hide. |
+| `pronouns` | boolean | `true` | Show pronoun badges |
+| `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
+| `badges` | boolean | `true` | Show Twitch badges |
+| `emotes` | boolean | `true` | Show 7TV/BTTV/FFZ emotes |
+| `emoteScale` | number | `1.0` | Emote size multiplier |
+| `paints` | boolean | `true` | Show 7TV name paints |
+| `shared` | boolean | `true` | Show Shared Chat icons |
+| `replies` | boolean | `true` | Show reply threading |
+| `timestamps` | boolean | `false` | Show message times |
+| `fadeOut` | boolean | `false` | Enable message fading |
+| `fadeDelay` | number | `30000` | Fade delay in ms |
+| `font` | string | `Segoe UI` | Font family (Google Fonts supported) |
+| `fontSize` | number | `16` | Font size in pixels |
+| `maxMessages` | number | `50` | Max messages shown |
+| `hideCommands` | boolean | `false` | Hide `!command` messages |
+| `hideBots` | boolean | `false` | Hide known bots |
+| `blocked` | string | | Comma-separated blocked users |
+| `bots` | string | | Comma-separated custom bots |
 
-### Example URL
+### Example
 ```
-https://kroma.scaptiq.live/v3/chat/yourChannel?pridePronouns=true&fontSize=18&font=Comic+Neue
+https://kroma.scaptiq.live/v3/chat/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
 ```
 
-### Development
+---
 
-Kroma is built with [SolidStart](https://start.solidjs.com) and Vite for blazing fast performance.
+## 🧑‍💻 Development
 
-#### Run Locally
+Kroma is built with [SolidStart](https://start.solidjs.com) + Vite for blazing fast performance.
+
 ```bash
 # Install dependencies
 npm install
 
-# Start development server
+# Start dev server
 npm run dev
-```
 
-#### Build for Production
-```bash
+# Build for production
 npm run build
 ```
 
 ---
 
-## Credits
+## 📜 Credits
 
-Created by **scaptiq**.
-Originally based on [ChatIS](https://github.com/IS2511/ChatIS).
-Licensed under MIT.
+Created by **[scaptiq](https://github.com/scaptiq)**.
 
+Originally based on [ChatIS](https://github.com/IS2511/ChatIS) by IS2511.
+
+Licensed under **MIT**.
+
+---
+
+<div align="center">
+  <p>Made with 💜 for inclusive streaming</p>
+</div>
