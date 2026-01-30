@@ -4,7 +4,7 @@ import tmi from "tmi.js";
 import MySiteTitle from "~/components/MySiteTitle";
 
 // Utils
-import { getUserPronouns } from "~/utils/pronouns";
+import { getUserPronounInfo } from "~/utils/pronouns";
 import { get7TVUserPaint, getNamePaintStyles, preloadPaints, type NamePaint } from "~/utils/paints";
 import { getChannelByRoomId, parseSourceBadges, cacheChannelByUsername } from "~/utils/sharedChat";
 import {
@@ -373,10 +373,15 @@ export default function Chat() {
 
         // Async enhancements
         if (config().showPronouns) {
-            getUserPronouns(username).then(pronouns => {
-                if (!keepAlive || !pronouns) return;
+            getUserPronounInfo(username).then(pronounInfo => {
+                if (!keepAlive || !pronounInfo) return;
                 setMessages(prev => prev.map(m =>
-                    m.id === messageId ? { ...m, pronouns } : m
+                    m.id === messageId ? {
+                        ...m,
+                        pronouns: pronounInfo.display,
+                        pronounColor: pronounInfo.color,
+                        pronounIsGradient: pronounInfo.isGradient
+                    } : m
                 ));
             });
         }
@@ -653,7 +658,14 @@ export default function Chat() {
                                     <div class="flex items-baseline shrink-0">
                                         {/* Pronouns */}
                                         <Show when={msg.pronouns && config().showPronouns}>
-                                            <span class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge'} mr-1.5`}>
+                                            <span
+                                                class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge--colored'} mr-1.5`}
+                                                style={!config().pridePronouns ? {
+                                                    background: msg.pronounColor || '#A855F7',
+                                                    "background-size": msg.pronounIsGradient ? '200% 200%' : undefined,
+                                                    animation: msg.pronounIsGradient ? 'pride-shimmer 3s ease infinite' : undefined
+                                                } : undefined}
+                                            >
                                                 {msg.pronouns}
                                             </span>
                                         </Show>

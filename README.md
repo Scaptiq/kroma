@@ -14,7 +14,8 @@ Kroma is designed to be **beautiful**, **performant**, and **inclusive**. It ren
 
 ### 🏳️‍🌈 Inclusive & Accessible
 - **Pronouns Support**: First-class integration with [Alejo.io](https://pr.alejo.io) to display user pronouns automatically.
-- **🌈 Pride Pronoun Badges**: Optional animated rainbow gradient badges for pronouns — celebrate identity with style!
+- **Color-Coded Pronoun Badges**: Each pronoun type gets a unique color — he/him (blue), she/her (pink), they/them (purple), and more!
+- **🌈 Pride Mode**: Optional animated rainbow gradient badges for ALL pronouns — celebrate identity with style!
 - **Identity Friendly**: Built to respect and highlight user identities.
 - **Accessibility**: High contrast modes, adjustable font sizes, and clear typography.
 

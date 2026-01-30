@@ -79,6 +79,8 @@ export interface ChatMessage {
 
     // Pronouns
     pronouns?: string;
+    pronounColor?: string;       // Badge background color
+    pronounIsGradient?: boolean; // Whether color is a gradient
 
     // Name Paint (7TV)
     paint?: {
