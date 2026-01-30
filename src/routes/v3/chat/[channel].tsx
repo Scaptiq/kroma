@@ -35,6 +35,7 @@ import {
 // Configuration interface
 interface ChatConfig {
     showPronouns: boolean;
+    pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
     showBadges: boolean;
     showEmotes: boolean;
     showTimestamps: boolean;
@@ -56,6 +57,7 @@ interface ChatConfig {
 
 const DEFAULT_CONFIG: ChatConfig = {
     showPronouns: true,
+    pridePronouns: false,  // Default to standard purple badges
     showBadges: true,
     showEmotes: true,
     showTimestamps: false,
@@ -109,6 +111,7 @@ export default function Chat() {
     const config = createMemo<ChatConfig>(() => ({
         ...DEFAULT_CONFIG,
         showPronouns: searchParams.pronouns !== 'false',
+        pridePronouns: searchParams.pridePronouns === 'true',
         showBadges: searchParams.badges !== 'false',
         showEmotes: searchParams.emotes !== 'false',
         showTimestamps: searchParams.timestamps === 'true',
@@ -650,7 +653,7 @@ export default function Chat() {
                                     <div class="flex items-baseline shrink-0">
                                         {/* Pronouns */}
                                         <Show when={msg.pronouns && config().showPronouns}>
-                                            <span class="pronouns-badge mr-1.5">
+                                            <span class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge'} mr-1.5`}>
                                                 {msg.pronouns}
                                             </span>
                                         </Show>

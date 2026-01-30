@@ -93,6 +93,7 @@ export default function ChatSetup() {
     const [selectedFont, setSelectedFont] = createSignal('Segoe UI');
     const [customFont, setCustomFont] = createSignal('');
     const [useCustomFont, setUseCustomFont] = createSignal(false);
+    const [pridePronouns, setPridePronouns] = createSignal(false);
 
     const [copied, setCopied] = createSignal(false);
     const [previewUrl, setPreviewUrl] = createSignal("");
@@ -137,6 +138,7 @@ export default function ChatSetup() {
         }
         if (blockedUsers().trim()) params.set('blocked', blockedUsers().trim());
         if (customBots().trim()) params.set('bots', customBots().trim());
+        if (pridePronouns()) params.set('pridePronouns', 'true');
 
         const queryString = params.toString();
         setPreviewUrl(`/v3/chat/${ch}?${queryString}`);
@@ -379,6 +381,21 @@ export default function ChatSetup() {
                                                             <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 1 }}>
                                                                 Displays user pronouns from <a href="https://pr.alejo.io" target="_blank" style={{ color: '#fff', "font-weight": 700 }}>Alejo.io</a>.
                                                             </Typography>
+
+                                                            {/* Pride Pronouns Toggle */}
+                                                            <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.15), rgba(255, 140, 0, 0.15), rgba(255, 237, 0, 0.15), rgba(0, 128, 38, 0.15), rgba(36, 64, 142, 0.15), rgba(115, 41, 130, 0.15))', border: '1px solid rgba(255,255,255,0.15)' }}>
+                                                                <FormControlLabel
+                                                                    control={<Switch checked={pridePronouns()} onChange={(_, v) => setPridePronouns(v)} color="primary" />}
+                                                                    label={
+                                                                        <Typography sx={{ fontWeight: 600, background: 'linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '0.9rem' }}>
+                                                                            🏳️‍🌈 Pride Pronoun Badges
+                                                                        </Typography>
+                                                                    }
+                                                                />
+                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', pl: 4, mt: -0.5 }}>
+                                                                    Animated rainbow gradient badges
+                                                                </Typography>
+                                                            </Box>
                                                         </Show>
                                                     </Box>
                                                 </Stack>
