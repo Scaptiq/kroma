@@ -552,8 +552,8 @@ export default function ChatSetup() {
                                                         if (e.dataTransfer) {
                                                             const urlStr = generateUrl();
                                                             const urlObj = new URL(urlStr);
-                                                            urlObj.searchParams.set("width", "450");
-                                                            urlObj.searchParams.set("height", "800");
+                                                            urlObj.searchParams.set("layer-width", "450");
+                                                            urlObj.searchParams.set("layer-height", "800");
                                                             const url = urlObj.toString();
 
                                                             e.dataTransfer.setData("text/plain", url);

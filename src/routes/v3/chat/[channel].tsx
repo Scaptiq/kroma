@@ -567,6 +567,7 @@ export default function Chat() {
             <div
                 class="fixed inset-0 pointer-events-none p-4 flex items-end overflow-hidden"
                 style={{
+                    "font-size": `${config().fontSize}px`,
                     "--chat-font-size": `${config().fontSize}px`,
                     "font-family": `"${config().fontFamily}", "Segoe UI", "Inter", sans-serif`,
                     "--emote-scale": config().emoteScale,
