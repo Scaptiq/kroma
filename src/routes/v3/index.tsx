@@ -383,17 +383,25 @@ export default function ChatSetup() {
                                                             </Typography>
 
                                                             {/* Pride Pronouns Toggle */}
-                                                            <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.15), rgba(255, 140, 0, 0.15), rgba(255, 237, 0, 0.15), rgba(0, 128, 38, 0.15), rgba(36, 64, 142, 0.15), rgba(115, 41, 130, 0.15))', border: '1px solid rgba(255,255,255,0.15)' }}>
+                                                            <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.12), rgba(255, 140, 0, 0.12), rgba(255, 237, 0, 0.12), rgba(0, 200, 80, 0.12), rgba(80, 120, 255, 0.12), rgba(180, 80, 255, 0.12))', border: '1px solid rgba(255,255,255,0.2)' }}>
                                                                 <FormControlLabel
                                                                     control={<Switch checked={pridePronouns()} onChange={(_, v) => setPridePronouns(v)} color="primary" />}
                                                                     label={
-                                                                        <Typography sx={{ fontWeight: 600, background: 'linear-gradient(90deg, #E40303, #FF8C00, #FFED00, #008026, #24408E, #732982)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '0.9rem' }}>
-                                                                            🏳️‍🌈 Pride Pronoun Badges
-                                                                        </Typography>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                            <span style={{ "font-size": '1.1rem' }}>🏳️‍🌈</span>
+                                                                            <Typography sx={{
+                                                                                fontWeight: 700,
+                                                                                fontSize: '0.9rem',
+                                                                                color: '#fff',
+                                                                                textShadow: '0 0 10px rgba(255, 140, 0, 0.5), 0 0 20px rgba(180, 80, 255, 0.3)'
+                                                                            }}>
+                                                                                Pride Mode
+                                                                            </Typography>
+                                                                        </Box>
                                                                     }
                                                                 />
-                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', pl: 4, mt: -0.5 }}>
-                                                                    Animated rainbow gradient badges
+                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', pl: 4, mt: -0.5 }}>
+                                                                    All pronoun badges become animated rainbow
                                                                 </Typography>
                                                             </Box>
                                                         </Show>
