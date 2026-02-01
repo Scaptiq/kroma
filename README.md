@@ -130,6 +130,7 @@ For advanced users, you can configure the overlay via URL:
 | `emotes` | boolean | `true` | Show 7TV/BTTV/FFZ emotes |
 | `emoteScale` | number | `1.0` | Emote size multiplier |
 | `paints` | boolean | `true` | Show 7TV name paints |
+| `roomState` | boolean | `true` | Show room state indicators (Slow, Sub Only, etc.) |
 | `shared` | boolean | `true` | Show Shared Chat icons |
 | `replies` | boolean | `true` | Show reply threading |
 | `timestamps` | boolean | `false` | Show message times |

@@ -80,6 +80,7 @@ export default function ChatSetup() {
     const [showTimestamps, setShowTimestamps] = createSignal(false);
     const [showSharedChat, setShowSharedChat] = createSignal(true);
     const [showNamePaints, setShowNamePaints] = createSignal(true);
+    const [showRoomState, setShowRoomState] = createSignal(true);
     const [showReplies, setShowReplies] = createSignal(true);
     const [hideCommands, setHideCommands] = createSignal(false);
     const [hideBots, setHideBots] = createSignal(false);
@@ -124,6 +125,7 @@ export default function ChatSetup() {
         if (showTimestamps()) params.set('timestamps', 'true');
         if (!showSharedChat()) params.set('shared', 'false');
         if (!showNamePaints()) params.set('paints', 'false');
+        if (!showRoomState()) params.set('roomState', 'false');
         if (!showReplies()) params.set('replies', 'false');
         if (hideCommands()) params.set('hideCommands', 'true');
         if (hideBots()) params.set('hideBots', 'true');
@@ -156,6 +158,7 @@ export default function ChatSetup() {
         if (showTimestamps()) url.searchParams.set('timestamps', 'true');
         if (!showSharedChat()) url.searchParams.set('shared', 'false');
         if (!showNamePaints()) url.searchParams.set('paints', 'false');
+        if (!showRoomState()) url.searchParams.set('roomState', 'false');
         if (!showReplies()) url.searchParams.set('replies', 'false');
         if (hideCommands()) url.searchParams.set('hideCommands', 'true');
         if (hideBots()) url.searchParams.set('hideBots', 'true');
@@ -454,6 +457,7 @@ export default function ChatSetup() {
                                                         <Stack spacing={1}>
                                                             <FormControlLabel control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="secondary" />} label="Subscriber Badges" />
                                                             <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
+                                                            <FormControlLabel control={<Switch checked={showRoomState()} onChange={(_, v) => setShowRoomState(v)} color="secondary" />} label="Show Room State" />
 
                                                             <Box sx={{ pt: 1 }}>
                                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>

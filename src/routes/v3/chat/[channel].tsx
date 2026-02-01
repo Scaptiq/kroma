@@ -53,6 +53,7 @@ interface ChatConfig {
     emoteScale: number;
     blockedUsers: string[];
     customBots: string[];
+    showRoomState: boolean;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -75,6 +76,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     emoteScale: 1.0,
     blockedUsers: [],
     customBots: [],
+    showRoomState: true,
 };
 
 // Known bot usernames
@@ -146,6 +148,7 @@ export default function Chat() {
         emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
         blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
         customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
+        showRoomState: searchParams.roomState !== 'false',
     }));
 
     // Scroll to bottom when new messages arrive
@@ -830,7 +833,7 @@ export default function Chat() {
             <MySiteTitle>#{params.channel}</MySiteTitle>
 
             {/* Room State Indicators */}
-            <Show when={roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k}>
+            <Show when={config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
                 <div class="room-state-bar">
                     <Show when={roomState().slowMode > 0}>
                         <span class="room-state-badge room-state-badge--slow">

@@ -9,7 +9,9 @@ export interface NamePaint {
     // CSS properties for styling
     color?: string;
     background?: string;
+    backgroundImage?: string;
     filter?: string;
+    image_url?: string;
 }
 
 // Cache for all available paints (fetched once)
@@ -46,7 +48,7 @@ async function fetchGlobalPaints(): Promise<Map<string, any>> {
 
     paintsFetchPromise = (async () => {
         try {
-            const query = `query{cosmetics{paints{id name function color angle repeat stops{at color}shadows{x_offset y_offset radius color}}}}`;
+            const query = `query{cosmetics{paints{id name function color angle image_url repeat stops{at color}shadows{x_offset y_offset radius color}}}}`;
             const res = await fetch("https://7tv.io/v3/gql", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -94,8 +96,11 @@ function paintToCSS(paint: any): NamePaint | null {
         result.color = decodeColor(paint.color);
     }
 
-    // Handle gradients
-    if (paint.stops && Array.isArray(paint.stops) && paint.stops.length > 0) {
+    // Handle gradients & images
+    if (paint.function === 'URL' && paint.image_url) {
+        result.backgroundImage = `url("${paint.image_url}")`;
+        result.background = `url("${paint.image_url}")`; // Fallback/base
+    } else if (paint.stops && Array.isArray(paint.stops) && paint.stops.length > 0) {
         const gradientStops = paint.stops.map((stop: any) => {
             const color = decodeColor(stop.color);
             const position = stop.at !== undefined ? stop.at * 100 : 0;
@@ -208,9 +213,13 @@ export function getNamePaintStyles(paint: NamePaint | null): {
 
     const style: { [key: string]: string } = {};
 
-    if (paint.background) {
-        // Use background-clip for gradient text
-        style['background'] = paint.background;
+    if (paint.backgroundImage || paint.background) {
+        // Use background-clip for gradient or image text
+        style['background-image'] = paint.backgroundImage || paint.background!;
+        if (paint.background && !paint.backgroundImage) {
+            style['background'] = paint.background;
+        }
+        style['background-size'] = 'cover';
         style['background-clip'] = 'text';
         style['-webkit-background-clip'] = 'text';
         style['-webkit-text-fill-color'] = 'transparent';
