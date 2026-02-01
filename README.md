@@ -68,6 +68,32 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 
 ---
 
+### 🎉 Event Alerts
+
+| Feature | Description |
+|---------|-------------|
+| **Subscription Alerts** | Special purple styling for new subs and resubs with month count |
+| **Gift Sub Alerts** | Green styling with 🎁 icon for gift subs and community gifts |
+| **Raid Alerts** | Animated red styling with viewer count when someone raids |
+| **Mod Actions** | Shows timeouts and bans with username (italic orange styling) |
+| **Deleted Messages** | Crossed-out, faded styling for deleted messages |
+
+---
+
+### 📋 Room State Indicators
+
+Badges appear at the top of the overlay when chat restrictions are active:
+
+| Mode | Badge | Description |
+|------|-------|-------------|
+| **Slow Mode** | 🐢 | Shows delay between messages (e.g., "30s") |
+| **Emote Only** | 😀 | Chat is emote-only |
+| **Followers Only** | 💜 | Shows follower time requirement |
+| **Sub Only** | ⭐ | Subscribers-only mode |
+| **R9K/Unique** | 🤖 | Messages must be unique |
+
+---
+
 ### 🎨 Personalization
 
 | Feature | Description |

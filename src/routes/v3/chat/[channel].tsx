@@ -94,6 +94,24 @@ export default function Chat() {
     const [isConnected, setIsConnected] = createSignal(false);
     const [channelId, setChannelId] = createSignal<string | null>(null);
 
+    // Room State (slow mode, emote-only, etc.)
+    const [roomState, setRoomState] = createSignal<{
+        slowMode: number;        // 0 = off, >0 = seconds between messages
+        emoteOnly: boolean;      // Emote-only mode
+        followersOnly: number;   // -1 = off, 0 = all followers, >0 = minutes required
+        subsOnly: boolean;       // Subscribers-only mode
+        r9k: boolean;            // R9K/unique mode
+    }>({
+        slowMode: 0,
+        emoteOnly: false,
+        followersOnly: -1,
+        subsOnly: false,
+        r9k: false
+    });
+
+    // Deleted message IDs (for mod actions)
+    const [deletedMessages, setDeletedMessages] = createSignal<Set<string>>(new Set());
+
     // Refs
     let client: tmi.Client | null = null;
     let keepAlive = true;
@@ -139,6 +157,19 @@ export default function Chat() {
             });
         }
     });
+
+    /**
+     * Add a system/event message (subs, raids, etc.)
+     */
+    const addSystemMessage = (msg: ChatMessage) => {
+        setMessages(prev => {
+            const updated = [msg, ...prev];
+            if (updated.length > config().maxMessages) {
+                return updated.slice(0, config().maxMessages);
+            }
+            return updated;
+        });
+    };
 
     /**
      * Find emote in all providers
@@ -459,13 +490,20 @@ export default function Chat() {
     const getMessageClass = (msg: ChatMessage): string => {
         const classes = ['chat-message'];
 
+        // Message type styling
         if (msg.type === 'action') classes.push('chat-message--action');
-        if (msg.type === 'sub' || msg.type === 'resub') classes.push('chat-message--sub');
-        if (msg.type === 'subgift' || msg.type === 'submysterygift') classes.push('chat-message--gift');
-        if (msg.type === 'raid') classes.push('chat-message--raid');
+        if (msg.type === 'sub') classes.push('message-sub');
+        if (msg.type === 'resub') classes.push('message-resub');
+        if (msg.type === 'subgift') classes.push('message-subgift');
+        if (msg.type === 'submysterygift') classes.push('message-submysterygift');
+        if (msg.type === 'raid') classes.push('message-raid');
         if (msg.type === 'announcement') classes.push('chat-message--announcement');
+        if (msg.type === 'system') classes.push('message-modaction');
         if (msg.isHighlighted) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
+
+        // Check if message was deleted
+        if (deletedMessages().has(msg.id)) classes.push('message-deleted');
 
         return classes.join(' ');
     };
@@ -541,6 +579,225 @@ export default function Chat() {
 
             client.on("message", handleMessage);
 
+            // Subscription event
+            client.on("subscription", (channel, username, method, message, userstate) => {
+                const subMessage: ChatMessage = {
+                    id: `sub-${Date.now()}-${username}`,
+                    username: username,
+                    displayName: userstate['display-name'] || username,
+                    userId: userstate['user-id'] || '',
+                    content: message || `${userstate['display-name'] || username} subscribed!`,
+                    parsedContent: [message || `subscribed with ${method.prime ? 'Twitch Prime' : `Tier ${method.plan?.charAt(0) || '1'}`}!`],
+                    color: userstate.color || '#9147ff',
+                    timestamp: Date.now(),
+                    type: 'sub',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false,
+                    subInfo: {
+                        months: 1,
+                        tier: method.prime ? 'Prime' : (method.plan as '1000' | '2000' | '3000') || '1000',
+                        isPrime: method.prime || false
+                    }
+                };
+                addSystemMessage(subMessage);
+            });
+
+            // Resub event
+            client.on("resub", (channel, username, months, message, userstate, methods) => {
+                const subMessage: ChatMessage = {
+                    id: `resub-${Date.now()}-${username}`,
+                    username: username,
+                    displayName: userstate['display-name'] || username,
+                    userId: userstate['user-id'] || '',
+                    content: message || `${userstate['display-name'] || username} resubscribed for ${months} months!`,
+                    parsedContent: [message || `resubscribed for ${months} months!`],
+                    color: userstate.color || '#9147ff',
+                    timestamp: Date.now(),
+                    type: 'resub',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false,
+                    subInfo: {
+                        months: months,
+                        tier: methods.prime ? 'Prime' : (methods.plan as '1000' | '2000' | '3000') || '1000',
+                        isPrime: methods.prime || false
+                    }
+                };
+                addSystemMessage(subMessage);
+            });
+
+            // Gift sub event
+            client.on("subgift", (channel, username, streakMonths, recipient, methods, userstate) => {
+                const giftMessage: ChatMessage = {
+                    id: `gift-${Date.now()}-${username}`,
+                    username: username,
+                    displayName: userstate['display-name'] || username,
+                    userId: userstate['user-id'] || '',
+                    content: `${userstate['display-name'] || username} gifted a sub to ${recipient}!`,
+                    parsedContent: [`gifted a Tier ${methods.plan?.charAt(0) || '1'} sub to ${recipient}!`],
+                    color: userstate.color || '#00c87f',
+                    timestamp: Date.now(),
+                    type: 'subgift',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false,
+                    subInfo: {
+                        months: 1,
+                        tier: (methods.plan as '1000' | '2000' | '3000') || '1000',
+                        isPrime: false,
+                        recipientDisplayName: recipient
+                    }
+                };
+                addSystemMessage(giftMessage);
+            });
+
+            // Mystery gift (mass gift) event
+            client.on("submysterygift", (channel, username, numbOfSubs, methods, userstate) => {
+                const giftMessage: ChatMessage = {
+                    id: `mysterygift-${Date.now()}-${username}`,
+                    username: username,
+                    displayName: userstate['display-name'] || username,
+                    userId: userstate['user-id'] || '',
+                    content: `${userstate['display-name'] || username} is gifting ${numbOfSubs} subs to the community!`,
+                    parsedContent: [`is gifting ${numbOfSubs} Tier ${methods.plan?.charAt(0) || '1'} subs to the community! 🎁`],
+                    color: userstate.color || '#00c87f',
+                    timestamp: Date.now(),
+                    type: 'submysterygift',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false,
+                    subInfo: {
+                        months: 1,
+                        tier: (methods.plan as '1000' | '2000' | '3000') || '1000',
+                        isPrime: false,
+                        giftCount: numbOfSubs
+                    }
+                };
+                addSystemMessage(giftMessage);
+            });
+
+            // Raid event
+            client.on("raided", (channel, username, viewers) => {
+                const raidMessage: ChatMessage = {
+                    id: `raid-${Date.now()}-${username}`,
+                    username: username,
+                    displayName: username,
+                    userId: '',
+                    content: `${username} is raiding with ${viewers} viewers!`,
+                    parsedContent: [`${username} is raiding with ${viewers.toLocaleString()} viewers! 🎉`],
+                    color: '#ff6b6b',
+                    timestamp: Date.now(),
+                    type: 'raid',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false,
+                    raidInfo: {
+                        displayName: username,
+                        viewerCount: viewers
+                    }
+                };
+                addSystemMessage(raidMessage);
+            });
+
+            // Room state changes (slow mode, emote-only, etc.)
+            client.on("roomstate", (channel, state) => {
+                const followersOnlyVal = state['followers-only'];
+                let followersOnlyNum = -1;
+                if (followersOnlyVal !== undefined && followersOnlyVal !== false) {
+                    followersOnlyNum = followersOnlyVal === true ? 0 : parseInt(String(followersOnlyVal));
+                }
+
+                setRoomState({
+                    slowMode: state.slow ? parseInt(String(state.slow)) : 0,
+                    emoteOnly: state['emote-only'] === true,
+                    followersOnly: followersOnlyNum,
+                    subsOnly: state['subs-only'] === true,
+                    r9k: state.r9k === true
+                });
+                console.log('📋 Room state updated:', state);
+            });
+
+            // Slow mode specific
+            client.on("slowmode", (channel, enabled, length) => {
+                setRoomState(prev => ({ ...prev, slowMode: enabled ? length : 0 }));
+            });
+
+            // Emote-only mode
+            client.on("emoteonly", (channel, enabled) => {
+                setRoomState(prev => ({ ...prev, emoteOnly: enabled }));
+            });
+
+            // Followers-only mode
+            client.on("followersonly", (channel, enabled, length) => {
+                setRoomState(prev => ({ ...prev, followersOnly: enabled ? length : -1 }));
+            });
+
+            // Subscribers-only mode
+            client.on("subscribers", (channel, enabled) => {
+                setRoomState(prev => ({ ...prev, subsOnly: enabled }));
+            });
+
+            // Message deleted (mod action)
+            client.on("messagedeleted", (channel, username, deletedMessage, userstate) => {
+                const msgId = userstate['target-msg-id'];
+                if (msgId) {
+                    setDeletedMessages(prev => new Set([...prev, msgId]));
+                }
+            });
+
+            // Timeout (mod action)
+            client.on("timeout", (channel, username, reason, duration, userstate) => {
+                const modMessage: ChatMessage = {
+                    id: `timeout-${Date.now()}-${username}`,
+                    username: 'system',
+                    displayName: 'Mod Action',
+                    userId: '',
+                    content: `${username} has been timed out for ${duration}s`,
+                    parsedContent: [`⏱️ ${username} timed out for ${duration}s`],
+                    color: '#ff9800',
+                    timestamp: Date.now(),
+                    type: 'system',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false
+                };
+                addSystemMessage(modMessage);
+            });
+
+            // Ban (mod action)
+            client.on("ban", (channel, username, reason, userstate) => {
+                const modMessage: ChatMessage = {
+                    id: `ban-${Date.now()}-${username}`,
+                    username: 'system',
+                    displayName: 'Mod Action',
+                    userId: '',
+                    content: `${username} has been banned`,
+                    parsedContent: [`🔨 ${username} has been banned`],
+                    color: '#f44336',
+                    timestamp: Date.now(),
+                    type: 'system',
+                    isAction: false,
+                    isFirstMessage: false,
+                    isHighlighted: false,
+                    badges: [],
+                    isShared: false
+                };
+                addSystemMessage(modMessage);
+            });
+
             client.on("connected", () => {
                 setIsConnected(true);
                 console.log(`✅ Connected to #${channel}`);
@@ -571,6 +828,37 @@ export default function Chat() {
     return (
         <>
             <MySiteTitle>#{params.channel}</MySiteTitle>
+
+            {/* Room State Indicators */}
+            <Show when={roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k}>
+                <div class="room-state-bar">
+                    <Show when={roomState().slowMode > 0}>
+                        <span class="room-state-badge room-state-badge--slow">
+                            🐢 Slow Mode: {roomState().slowMode}s
+                        </span>
+                    </Show>
+                    <Show when={roomState().emoteOnly}>
+                        <span class="room-state-badge room-state-badge--emote">
+                            😀 Emote Only
+                        </span>
+                    </Show>
+                    <Show when={roomState().followersOnly >= 0}>
+                        <span class="room-state-badge room-state-badge--followers">
+                            💜 Followers{roomState().followersOnly > 0 ? ` (${roomState().followersOnly}m)` : ''}
+                        </span>
+                    </Show>
+                    <Show when={roomState().subsOnly}>
+                        <span class="room-state-badge room-state-badge--subs">
+                            ⭐ Sub Only
+                        </span>
+                    </Show>
+                    <Show when={roomState().r9k}>
+                        <span class="room-state-badge room-state-badge--r9k">
+                            🤖 R9K
+                        </span>
+                    </Show>
+                </div>
+            </Show>
 
             {/* Chat Container */}
             <div

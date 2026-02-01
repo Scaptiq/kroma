@@ -276,12 +276,166 @@ body {
     font-weight: 600;
 }
 
-.message-sub {
-    background: linear-gradient(90deg, rgba(235, 4, 0, 0.8) 0%, rgba(235, 4, 0, 0.4) 100%);
-    /* Reddish for subs? Or maybe purple */
-    background: linear-gradient(90deg, rgba(145, 71, 255, 0.85) 0%, rgba(145, 71, 255, 0.5) 100%);
-    /* Twitch Purple */
-    border-left: 4px solid #ffffff;
+/* Subscription Messages */
+.message-sub,
+.message-resub {
+    background: linear-gradient(135deg, rgba(145, 71, 255, 0.4) 0%, rgba(145, 71, 255, 0.15) 100%);
+    border-left: 4px solid #9147ff;
+    position: relative;
+    overflow: hidden;
+}
+
+.message-sub::before,
+.message-resub::before {
+    content: '⭐';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5em;
+    opacity: 0.3;
+}
+
+/* Gift Sub Messages */
+.message-subgift,
+.message-submysterygift {
+    background: linear-gradient(135deg, rgba(0, 200, 127, 0.4) 0%, rgba(0, 200, 127, 0.15) 100%);
+    border-left: 4px solid #00c87f;
+    position: relative;
+    overflow: hidden;
+}
+
+.message-subgift::before,
+.message-submysterygift::before {
+    content: '🎁';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5em;
+    opacity: 0.4;
+}
+
+/* Raid Messages */
+.message-raid {
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.5) 0%, rgba(255, 107, 107, 0.2) 100%);
+    border-left: 4px solid #ff6b6b;
+    position: relative;
+    overflow: hidden;
+    animation: raid-pulse 2s ease-in-out infinite;
+}
+
+.message-raid::before {
+    content: '🎉';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.8em;
+    opacity: 0.5;
+    animation: raid-bounce 1s ease-in-out infinite;
+}
+
+@keyframes raid-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px rgba(255, 107, 107, 0.2);
+    }
+}
+
+@keyframes raid-bounce {
+
+    0%,
+    100% {
+        transform: translateY(-50%) scale(1);
+    }
+
+    50% {
+        transform: translateY(-50%) scale(1.1);
+    }
+}
+
+/* Mod Action Messages (timeout/ban) */
+.message-modaction {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.3) 0%, rgba(255, 152, 0, 0.1) 100%);
+    border-left: 4px solid #ff9800;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+/* Deleted Messages */
+.message-deleted {
+    opacity: 0.4;
+    text-decoration: line-through;
+    filter: grayscale(50%);
+}
+
+/* Room State Indicators */
+.room-state-bar {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.room-state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: slideDown 0.3s ease-out;
+}
+
+.room-state-badge--slow {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.9), rgba(255, 152, 0, 0.9));
+    box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.room-state-badge--emote {
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.9), rgba(103, 58, 183, 0.9));
+    box-shadow: 0 2px 10px rgba(156, 39, 176, 0.3);
+}
+
+.room-state-badge--followers {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.9), rgba(3, 169, 244, 0.9));
+    box-shadow: 0 2px 10px rgba(33, 150, 243, 0.3);
+}
+
+.room-state-badge--subs {
+    background: linear-gradient(135deg, rgba(145, 71, 255, 0.9), rgba(168, 85, 247, 0.9));
+    box-shadow: 0 2px 10px rgba(145, 71, 255, 0.3);
+}
+
+.room-state-badge--r9k {
+    background: linear-gradient(135deg, rgba(96, 125, 139, 0.9), rgba(69, 90, 100, 0.9));
+    box-shadow: 0 2px 10px rgba(96, 125, 139, 0.3);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* First Message Indicator */
