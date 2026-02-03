@@ -679,7 +679,6 @@ export default function Chat() {
         vip: "https://www.kickdatabase.com/kickBadges/vip.svg",
         og: "https://www.kickdatabase.com/kickBadges/og.svg",
         founder: "https://www.kickdatabase.com/kickBadges/founder.svg",
-        subscriber: "https://www.kickdatabase.com/kickBadges/subscriber.svg",
         subgifter: "https://www.kickdatabase.com/kickBadges/subGifter.svg",
         subgifter25: "https://www.kickdatabase.com/kickBadges/subGifter25.svg",
         subgifter50: "https://www.kickdatabase.com/kickBadges/subGifter50.svg",
