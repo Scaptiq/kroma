@@ -385,7 +385,16 @@ export default function Chat() {
                 const emojiId = emoji?.emojiId;
 
                 if (imageUrl) {
-                    shortcuts.forEach((shortcut: string) => shortcodeMap.set(shortcut, imageUrl));
+                    shortcuts.forEach((shortcut: string) => {
+                        shortcodeMap.set(shortcut, imageUrl);
+                        const trimmed = shortcut.replace(/^:+|:+$/g, "");
+                        if (trimmed && trimmed !== shortcut) {
+                            shortcodeMap.set(trimmed, imageUrl);
+                        }
+                        if (trimmed) {
+                            shortcodeMap.set(`:${trimmed}:`, imageUrl);
+                        }
+                    });
                     if (emojiId && /[^\x00-\x7F]/.test(emojiId)) {
                         shortcodeMap.set(emojiId, imageUrl);
                     }
