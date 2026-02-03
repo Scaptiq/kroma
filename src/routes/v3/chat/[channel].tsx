@@ -376,10 +376,19 @@ export default function Chat() {
         const shortcodeMap = new Map<string, string>();
         if (Array.isArray(emojis)) {
             emojis.forEach((emoji: any) => {
-                const shortcode = emoji?.shortcode || emoji?.shortcodes?.[0] || emoji?.emojiId;
                 const imageUrl = emoji?.imageUrl || emoji?.url || emoji?.image?.thumbnails?.[0]?.url;
-                if (shortcode && imageUrl) {
-                    shortcodeMap.set(shortcode, imageUrl);
+                const shortcuts = [
+                    emoji?.shortcode,
+                    ...(Array.isArray(emoji?.shortcuts) ? emoji.shortcuts : []),
+                    ...(Array.isArray(emoji?.shortcodes) ? emoji.shortcodes : []),
+                ].filter(Boolean);
+                const emojiId = emoji?.emojiId;
+
+                if (imageUrl) {
+                    shortcuts.forEach((shortcut: string) => shortcodeMap.set(shortcut, imageUrl));
+                    if (emojiId && /[^\x00-\x7F]/.test(emojiId)) {
+                        shortcodeMap.set(emojiId, imageUrl);
+                    }
                 }
             });
         }
@@ -1192,6 +1201,7 @@ export default function Chat() {
         if (!snippet || !author) return;
 
         let content = '';
+        let rawText = '';
         let messageType: MessageType = 'chat';
         let isHighlighted = false;
         const emojiList =
@@ -1201,12 +1211,15 @@ export default function Chat() {
             [];
 
         if (snippet.type === 'textMessageEvent') {
-            content = snippet.textMessageDetails?.messageText || snippet.displayMessage || '';
+            rawText = snippet.textMessageDetails?.messageText || '';
+            content = snippet.displayMessage || rawText;
         } else if (snippet.type === 'superChatEvent') {
-            content = snippet.superChatDetails?.userComment || snippet.displayMessage || '';
+            rawText = snippet.superChatDetails?.userComment || '';
+            content = snippet.displayMessage || rawText;
             messageType = 'highlighted';
             isHighlighted = true;
         } else if (snippet.type === 'superStickerEvent') {
+            rawText = '';
             content = snippet.displayMessage || 'sent a Super Sticker';
             messageType = 'highlighted';
             isHighlighted = true;
@@ -1214,13 +1227,14 @@ export default function Chat() {
             return;
         }
 
-        if (!content) return;
+        if (!content && !rawText) return;
+        if (!rawText) rawText = content;
 
         const timestamp = snippet.publishedAt ? Date.parse(snippet.publishedAt) : Date.now();
         const displayName = author.displayName || 'YouTube';
         const username = displayName.toLowerCase().replace(/\s+/g, '');
 
-        const parsedContent = parseYouTubeMessageContent(content, emojiList);
+        const parsedContent = parseYouTubeMessageContent(rawText, emojiList);
 
         const newMessage: ChatMessage = {
             id: item.id,
