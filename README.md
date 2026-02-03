@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/kroma-logo.png" width="120" />
   <h1>Kroma Chat</h1>
-  <p><strong>An inclusive Twitch + Kick chat overlay.</strong></p>
+  <p><strong>The most inclusive Twitch, Kick, and YouTube chat overlay.</strong></p>
   <p>Built for streamers who care about identity, accessibility, and aesthetics.</p>
 </div>
 
@@ -11,14 +11,13 @@
 
 ## 💡 What is Kroma?
 
-**Kroma** is a browser-based chat overlay for OBS that displays your Twitch or Kick chat with a focus on **inclusivity** and **modern design**. Unlike other overlays, Kroma puts identity first:
+**Kroma** is a premium browser-based chat overlay for OBS that displays your **Twitch**, **Kick**, or **YouTube** chat with a focus on **inclusivity** and **modern design**. 
 
-- 🏳️‍🌈 **Pronoun badges** are color-coded by default and can be switched to animated pride rainbows
-- 🎨 **7TV paints** and emotes render beautifully (Twitch + Kick)
-- 👥 **Shared Chat** (Twitch Stream Together) is supported
-- 🔀 **Both mode** lets you show Twitch + Kick in one overlay
-
-Whether you're a small streamer or a major broadcaster, Kroma makes your chat look premium while respecting your community's identities.
+- 🏳️‍🌈 **Identity First**: Fully integrated pronouns (Alejo.io) and pride-themed badges.
+- 🎨 **Beautiful Aesthetics**: Supports 7TV name paints, custom gradients, and frosted-glass UI.
+- 🚀 **Multi-Platform**: Combine Twitch, Kick, and YouTube into a single, seamless overlay.
+- 👥 **Shared Chat**: The only overlay with native support for Twitch "Stream Together".
+- 🛠️ **Configurator**: Powerful [setup page](https://kroma.scaptiq.live/v3/) to customize everything without code.
 
 ---
 
@@ -61,12 +60,12 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 
 | Feature | Description |
 |---------|-------------|
-| **Shared Chat** | Twitch "Stream Together" — shows which channel each message came from (Twitch only) |
-| **7TV / BTTV / FFZ** | Full emote support from all major providers (Twitch), plus 7TV on Kick |
-| **Name Paints** | Renders 7TV gradient usernames (Twitch + Kick) |
+| **Shared Chat** | Native support for Twitch "Stream Together" (Twitch only) |
+| **7TV / BTTV / FFZ** | Full emote support (Twitch/Kick/YouTube - 7TV everywhere!) |
+| **Name Paints** | Renders 7TV gradient usernames (Twitch/Kick/YouTube) |
 | **Reply Threading** | Shows reply context for threaded conversations (Twitch only) |
-| **Bits & Cheers** | Displays cheer emotes and bit amounts |
-| **Platform Badge** | Optional Twitch/Kick logo before badges |
+| **Bits & Cheers** | Displays cheer emotes and bit amounts (Twitch only) |
+| **Platform Badge** | Optional icons to distinguish Twitch, Kick, and YouTube messages |
 
 ---
 
@@ -127,18 +126,17 @@ For advanced users, you can configure the overlay via URL:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `platforms` | string | `twitch` | Comma-separated list: `twitch`, `kick`, `youtube` |
-| `platform` | string | `twitch` | Legacy single platform: `twitch`, `kick`, or `both` |
-| `twitch` | string | | Twitch channel username |
-| `kick` | string | | Kick channel username |
+| `platforms` | string | `twitch` | Comma-separated: `twitch`, `kick`, `youtube` |
+| `twitch` | string | | Twitch channel name |
+| `kick` | string | | Kick channel name |
 | `youtube` | string | | YouTube handle (without `@`) |
-| `platformBadge` | boolean | `true` | Show the platform logo before badges |
+| `platformBadge` | boolean | `true` | Show platform icon before badges |
 | `pronouns` | boolean | `true` | Show pronoun badges (Twitch only) |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
 | `badges` | boolean | `true` | Show badges (Twitch + Kick) |
-| `emotes` | boolean | `true` | Show emotes (Twitch 7TV/BTTV/FFZ, Kick 7TV) |
+| `emotes` | boolean | `true` | Show emotes (incl. 7TV on all platforms) |
 | `emoteScale` | number | `1.0` | Emote size multiplier |
-| `paints` | boolean | `true` | Show 7TV name paints (Twitch + Kick) |
+| `paints` | boolean | `true` | Show 7TV name paints (All platforms) |
 | `roomState` | boolean | `false` | Show room state indicators (Twitch only) |
 | `shared` | boolean | `true` | Show Shared Chat icons (Twitch only) |
 | `replies` | boolean | `true` | Show reply threading (Twitch only) |
