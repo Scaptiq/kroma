@@ -150,6 +150,8 @@ export default function Chat() {
     let youtubeNextPageToken: string | null = null;
     let youtubeLiveChatId: string | null = null;
     let youtubeSeenMessageIds = new Set<string>();
+    let youtubeEmojiMap: Map<string, string> | null = null;
+    let youtubeEmojiMapPromise: Promise<Map<string, string>> | null = null;
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -368,7 +370,7 @@ export default function Chat() {
         return `https://twemoji.maxcdn.com/v/latest/svg/${codepoints}.svg`;
     };
 
-    const parseYouTubeMessageContent = (text: string, emojis?: any[]): ParsedPart[] => {
+    const parseYouTubeMessageContent = (text: string, emojis?: any[], emojiMap?: Map<string, string> | null): ParsedPart[] => {
         if (!config().showEmotes) return [text];
 
         let parts: ParsedPart[] = [text];
@@ -431,6 +433,41 @@ export default function Chat() {
             parts = nextParts;
         }
 
+        if (emojiMap && emojiMap.size > 0) {
+            const nextParts: ParsedPart[] = [];
+            const shortcodePattern = /:([a-zA-Z0-9_+-]+):/g;
+            parts.forEach((part) => {
+                if (typeof part !== "string") {
+                    nextParts.push(part);
+                    return;
+                }
+                let lastIndex = 0;
+                for (const match of part.matchAll(shortcodePattern)) {
+                    const index = match.index ?? 0;
+                    const shortcode = match[0];
+                    if (index > lastIndex) {
+                        nextParts.push(part.slice(lastIndex, index));
+                    }
+                    const url = emojiMap.get(shortcode);
+                    if (url) {
+                        nextParts.push({
+                            type: "emote",
+                            url,
+                            name: shortcode,
+                            provider: "youtube"
+                        });
+                    } else {
+                        nextParts.push(shortcode);
+                    }
+                    lastIndex = index + shortcode.length;
+                }
+                if (lastIndex < part.length) {
+                    nextParts.push(part.slice(lastIndex));
+                }
+            });
+            parts = nextParts;
+        }
+
         const emojiRegex = /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*?/gu;
         const withTwemoji: ParsedPart[] = [];
         parts.forEach((part) => {
@@ -459,6 +496,63 @@ export default function Chat() {
         });
 
         return withTwemoji.filter((part) => part !== "");
+    };
+
+    const extractEmojiMap = (data: any): Map<string, string> => {
+        const map = new Map<string, string>();
+        const items = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.items)
+                ? data.items
+                : Array.isArray(data?.emojis)
+                    ? data.emojis
+                    : Array.isArray(data?.emoji)
+                        ? data.emoji
+                        : [];
+        items.forEach((item: any) => {
+            const imageUrl =
+                item?.image?.thumbnails?.[0]?.url ||
+                item?.image?.url ||
+                item?.imageUrl ||
+                item?.url ||
+                item?.png?.url ||
+                item?.svg?.url;
+            if (!imageUrl) return;
+            const shortcuts = [
+                ...(Array.isArray(item?.shortcuts) ? item.shortcuts : []),
+                ...(Array.isArray(item?.shortcodes) ? item.shortcodes : []),
+                item?.shortcode
+            ].filter(Boolean);
+            shortcuts.forEach((shortcut: string) => {
+                map.set(shortcut, imageUrl);
+                const trimmed = shortcut.replace(/^:+|:+$/g, "");
+                if (trimmed && trimmed !== shortcut) {
+                    map.set(trimmed, imageUrl);
+                }
+                if (trimmed) {
+                    map.set(`:${trimmed}:`, imageUrl);
+                }
+            });
+        });
+        return map;
+    };
+
+    const loadYouTubeEmojiMap = async (): Promise<Map<string, string>> => {
+        if (youtubeEmojiMap) return youtubeEmojiMap;
+        if (youtubeEmojiMapPromise) return youtubeEmojiMapPromise;
+        youtubeEmojiMapPromise = (async () => {
+            try {
+                const res = await fetch("https://www.gstatic.com/youtube/img/emojis/emojis-png-7.json");
+                if (!res.ok) return new Map();
+                const data = await res.json();
+                const map = extractEmojiMap(data);
+                youtubeEmojiMap = map;
+                return map;
+            } catch {
+                return new Map();
+            }
+        })();
+        return youtubeEmojiMapPromise;
     };
 
     const getKickEmoteUrl = (emote: any): string | undefined => {
@@ -1243,7 +1337,7 @@ export default function Chat() {
         const displayName = author.displayName || 'YouTube';
         const username = displayName.toLowerCase().replace(/\s+/g, '');
 
-        const parsedContent = parseYouTubeMessageContent(rawText, emojiList);
+        const parsedContent = parseYouTubeMessageContent(rawText, emojiList, youtubeEmojiMap);
 
         const newMessage: ChatMessage = {
             id: item.id,
@@ -1270,6 +1364,17 @@ export default function Chat() {
             }
             return updated;
         });
+
+        if (config().showEmotes && rawText.includes(':') && emojiList.length === 0) {
+            loadYouTubeEmojiMap().then((map) => {
+                if (!keepAlive || map.size === 0) return;
+                setMessages(prev => prev.map(m =>
+                    m.id === item.id
+                        ? { ...m, parsedContent: parseYouTubeMessageContent(rawText, emojiList, map) }
+                        : m
+                ));
+            });
+        }
 
         if (config().showNamePaints && author.channelId) {
             get7TVUserPaint(author.channelId, 'youtube').then(paint => {
