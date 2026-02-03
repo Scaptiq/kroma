@@ -1,15 +1,12 @@
-import { json } from "solid-start";
-import { getRequestEvent } from "solid-start/server";
+import { json, type APIEvent } from "solid-start";
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 
-const getApiKey = () => {
-    const event = getRequestEvent();
-    return (event as any)?.env?.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || "";
-};
+const getApiKey = (event?: APIEvent) =>
+    (event as any)?.env?.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || "";
 
-export async function GET({ request }: { request: Request }) {
-    const url = new URL(request.url);
+export async function GET(event: APIEvent) {
+    const url = new URL(event.request.url);
     const liveChatId = url.searchParams.get("liveChatId");
     const pageToken = url.searchParams.get("pageToken");
 
@@ -17,7 +14,7 @@ export async function GET({ request }: { request: Request }) {
         return json({ error: "Missing liveChatId" }, { status: 400 });
     }
 
-    const apiKey = getApiKey();
+    const apiKey = getApiKey(event);
     if (!apiKey) {
         return json({ error: "Missing YOUTUBE_API_KEY" }, { status: 500 });
     }
