@@ -164,7 +164,7 @@ export default function Chat() {
         emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
         blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
         customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-        showRoomState: searchParams.roomState !== 'false' && searchParams.platform !== 'kick',
+        showRoomState: searchParams.roomState === 'true' && searchParams.platform !== 'kick',
     }));
 
     const isConnected = createMemo(() => {

@@ -14,8 +14,9 @@
 **Kroma** is a browser-based chat overlay for OBS that displays your Twitch or Kick chat with a focus on **inclusivity** and **modern design**. Unlike other overlays, Kroma puts identity first:
 
 - 🏳️‍🌈 **Pronoun badges** are color-coded by default and can be switched to animated pride rainbows
-- 🎨 **7TV paints** and emotes render beautifully
+- 🎨 **7TV paints** and emotes render beautifully (Twitch + Kick)
 - 👥 **Shared Chat** (Twitch Stream Together) is supported
+- 🔀 **Both mode** lets you show Twitch + Kick in one overlay
 
 Whether you're a small streamer or a major broadcaster, Kroma makes your chat look premium while respecting your community's identities.
 
@@ -27,7 +28,7 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 
 | Feature | Description |
 |---------|-------------|
-| **Pronouns** | Automatic integration with [Alejo.io](https://pr.alejo.io) — no setup needed |
+| **Pronouns** | Automatic integration with [Alejo.io](https://pr.alejo.io) — no setup needed (Twitch only) |
 | **Color-Coded Badges** | Each pronoun gets its own unique color (see table below) |
 | **Pride Mode** | Toggle animated rainbow badges for everyone 🌈 |
 | **First-Time Chatter** | Highlights users chatting for the first time |
@@ -61,10 +62,11 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 | Feature | Description |
 |---------|-------------|
 | **Shared Chat** | Twitch "Stream Together" — shows which channel each message came from (Twitch only) |
-| **7TV / BTTV / FFZ** | Full emote support from all major providers |
-| **Name Paints** | Renders 7TV gradient usernames |
+| **7TV / BTTV / FFZ** | Full emote support from all major providers (Twitch), plus 7TV on Kick |
+| **Name Paints** | Renders 7TV gradient usernames (Twitch + Kick) |
 | **Reply Threading** | Shows reply context for threaded conversations (Twitch only) |
 | **Bits & Cheers** | Displays cheer emotes and bit amounts |
+| **Platform Badge** | Optional Twitch/Kick logo before badges |
 
 ---
 
@@ -80,7 +82,7 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 
 ---
 
-### 📋 Room State Indicators
+### 📋 Room State Indicators (Twitch Only)
 
 Badges appear at the top of the overlay when chat restrictions are active:
 
@@ -127,12 +129,12 @@ For advanced users, you can configure the overlay via URL:
 |-----------|------|---------|-------------|
 | `platform` | string | `twitch` | `twitch`, `kick`, or `both` |
 | `platformBadge` | boolean | `true` | Show the platform logo before badges |
-| `pronouns` | boolean | `true` | Show pronoun badges |
+| `pronouns` | boolean | `true` | Show pronoun badges (Twitch only) |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
-| `badges` | boolean | `true` | Show Twitch badges |
-| `emotes` | boolean | `true` | Show 7TV/BTTV/FFZ emotes |
+| `badges` | boolean | `true` | Show badges (Twitch + Kick) |
+| `emotes` | boolean | `true` | Show emotes (Twitch 7TV/BTTV/FFZ, Kick 7TV) |
 | `emoteScale` | number | `1.0` | Emote size multiplier |
-| `paints` | boolean | `true` | Show 7TV name paints |
+| `paints` | boolean | `true` | Show 7TV name paints (Twitch + Kick) |
 | `roomState` | boolean | `false` | Show room state indicators (Twitch only) |
 | `shared` | boolean | `true` | Show Shared Chat icons (Twitch only) |
 | `replies` | boolean | `true` | Show reply threading (Twitch only) |
