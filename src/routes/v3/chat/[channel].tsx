@@ -1907,7 +1907,7 @@ export default function Chat() {
                                     {/* Username Group */}
                                     <div class="flex items-baseline shrink-0">
                                         {/* Pronouns */}
-                                        <Show when={msg.pronouns && config().showPronouns}>
+                                        <Show when={msg.pronouns && config().showPronouns && msg.platform === 'twitch'}>
                                             <span
                                                 class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge--colored'} mr-1.5`}
                                                 style={!config().pridePronouns ? {
