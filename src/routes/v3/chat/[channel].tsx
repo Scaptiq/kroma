@@ -708,8 +708,8 @@ export default function Chat() {
     };
 
     const PLATFORM_LOGOS: Record<"twitch" | "kick", string> = {
-        twitch: "https://upload.wikimedia.org/wikipedia/commons/4/41/Twitch_Glitch_Logo_White.svg",
-        kick: "https://commons.wikimedia.org/wiki/Special:FilePath/Kick.com_icon_logo.svg",
+        twitch: "https://cdn.brandfetch.io/idIwZCwD2f/theme/dark/symbol.svg?c=1bxid64Mup7aczewSAYMX&t=1668070397594",
+        kick: "data:image/svg+xml;utf8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20stroke-linejoin%3D%22round%22%20stroke-miterlimit%3D%222%22%3E%3Cpath%20d%3D%22M37%20.036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z%22%20fill%3D%22%2353fc18%22/%3E%3C/svg%3E",
     };
 
     const handleKickMessage = (payload: any) => {
