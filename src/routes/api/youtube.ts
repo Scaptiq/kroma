@@ -1,8 +1,12 @@
 import { json } from "solid-start";
+import { getRequestEvent } from "solid-start/server";
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 
-const getApiKey = () => process.env.YOUTUBE_API_KEY || "";
+const getApiKey = () => {
+    const event = getRequestEvent();
+    return (event as any)?.env?.YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || "";
+};
 
 const normalizeChannelInput = (input: string) => {
     let value = input.trim();
