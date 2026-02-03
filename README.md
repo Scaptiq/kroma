@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/kroma-logo.png" width="120" />
   <h1>Kroma Chat</h1>
-  <p><strong>The most inclusive Twitch chat overlay.</strong></p>
+  <p><strong>An inclusive Twitch + Kick chat overlay.</strong></p>
   <p>Built for streamers who care about identity, accessibility, and aesthetics.</p>
 </div>
 
@@ -11,11 +11,11 @@
 
 ## 💡 What is Kroma?
 
-**Kroma** is a browser-based chat overlay for OBS that displays your Twitch chat with a focus on **inclusivity** and **modern design**. Unlike other overlays, Kroma puts identity first:
+**Kroma** is a browser-based chat overlay for OBS that displays your Twitch or Kick chat with a focus on **inclusivity** and **modern design**. Unlike other overlays, Kroma puts identity first:
 
 - 🏳️‍🌈 **Pronoun badges** are color-coded by default and can be switched to animated pride rainbows
 - 🎨 **7TV paints** and emotes render beautifully
-- 👥 **Shared Chat** (Stream Together) is fully supported — the *only* overlay that does this
+- 👥 **Shared Chat** (Twitch Stream Together) is supported
 
 Whether you're a small streamer or a major broadcaster, Kroma makes your chat look premium while respecting your community's identities.
 
@@ -60,10 +60,10 @@ Whether you're a small streamer or a major broadcaster, Kroma makes your chat lo
 
 | Feature | Description |
 |---------|-------------|
-| **Shared Chat** | Native support for Twitch "Stream Together" — shows which channel each message came from |
+| **Shared Chat** | Twitch "Stream Together" — shows which channel each message came from (Twitch only) |
 | **7TV / BTTV / FFZ** | Full emote support from all major providers |
 | **Name Paints** | Renders 7TV gradient usernames |
-| **Reply Threading** | Shows reply context for threaded conversations |
+| **Reply Threading** | Shows reply context for threaded conversations (Twitch only) |
 | **Bits & Cheers** | Displays cheer emotes and bit amounts |
 
 ---
@@ -110,8 +110,9 @@ Badges appear at the top of the overlay when chat restrictions are active:
 ## 🚀 Quick Start
 
 1. Go to **[kroma.scaptiq.live](https://kroma.scaptiq.live)**
-2. Enter your **Twitch username**
-3. Customize settings in **General**, **Visuals**, and **Filters** tabs
+2. Choose **Twitch**, **Kick**, or **Both**
+3. Enter your channel name
+4. Customize settings in **General**, **Visuals**, and **Filters** tabs
 4. **Drag the "Drag to OBS" button** directly into your OBS Sources
 
 > **Recommended browser source size:** 450×800
@@ -124,15 +125,17 @@ For advanced users, you can configure the overlay via URL:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `platform` | string | `twitch` | `twitch`, `kick`, or `both` |
+| `platformBadge` | boolean | `true` | Show the platform logo before badges |
 | `pronouns` | boolean | `true` | Show pronoun badges |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
 | `badges` | boolean | `true` | Show Twitch badges |
 | `emotes` | boolean | `true` | Show 7TV/BTTV/FFZ emotes |
 | `emoteScale` | number | `1.0` | Emote size multiplier |
 | `paints` | boolean | `true` | Show 7TV name paints |
-| `roomState` | boolean | `true` | Show room state indicators (Slow, Sub Only, etc.) |
-| `shared` | boolean | `true` | Show Shared Chat icons |
-| `replies` | boolean | `true` | Show reply threading |
+| `roomState` | boolean | `false` | Show room state indicators (Twitch only) |
+| `shared` | boolean | `true` | Show Shared Chat icons (Twitch only) |
+| `replies` | boolean | `true` | Show reply threading (Twitch only) |
 | `timestamps` | boolean | `false` | Show message times |
 | `fadeOut` | boolean | `false` | Enable message fading |
 | `fadeDelay` | number | `30000` | Fade delay in ms |

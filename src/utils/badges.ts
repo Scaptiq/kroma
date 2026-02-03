@@ -17,7 +17,7 @@ const channelBadgeCache = new Map<string, Map<string, string>>(); // channelId -
 // 7TV badges cache (global list + user lookups)
 let global7TVBadges: Map<string, any> | null = null;
 let badges7TVFetchPromise: Promise<Map<string, any>> | null = null;
-const user7TVBadgeCache = new Map<string, Badge | null>(); // userId -> badge
+const user7TVBadgeCache = new Map<string, Badge | null>(); // key -> badge
 
 // FFZ badges cache
 const ffzBadgeCache = new Map<string, Badge[]>(); // userId -> badges
@@ -163,10 +163,14 @@ export async function preload7TVBadges(): Promise<void> {
 /**
  * Fetch 7TV badge for a user
  */
-export async function fetch7TVUserBadges(userId: string): Promise<Badge[]> {
+export async function fetch7TVUserBadges(
+    userId: string,
+    platform: 'twitch' | 'kick' = 'twitch'
+): Promise<Badge[]> {
+    const cacheKey = `${platform}:${userId}`;
     // Check cache
-    if (user7TVBadgeCache.has(userId)) {
-        const cached = user7TVBadgeCache.get(userId);
+    if (user7TVBadgeCache.has(cacheKey)) {
+        const cached = user7TVBadgeCache.get(cacheKey);
         return cached ? [cached] : [];
     }
 
@@ -175,9 +179,9 @@ export async function fetch7TVUserBadges(userId: string): Promise<Badge[]> {
         const allBadges = await fetchGlobal7TVBadges();
 
         // Fetch user data
-        const res = await fetch(`https://7tv.io/v3/users/twitch/${userId}`);
+        const res = await fetch(`https://7tv.io/v3/users/${platform}/${userId}`);
         if (!res.ok) {
-            user7TVBadgeCache.set(userId, null);
+            user7TVBadgeCache.set(cacheKey, null);
             return [];
         }
 
@@ -195,14 +199,14 @@ export async function fetch7TVUserBadges(userId: string): Promise<Badge[]> {
                     : '',
                 provider: '7tv'
             };
-            user7TVBadgeCache.set(userId, badge);
+            user7TVBadgeCache.set(cacheKey, badge);
             return [badge];
         }
 
-        user7TVBadgeCache.set(userId, null);
+        user7TVBadgeCache.set(cacheKey, null);
         return [];
     } catch (e) {
-        user7TVBadgeCache.set(userId, null);
+        user7TVBadgeCache.set(cacheKey, null);
         return [];
     }
 }

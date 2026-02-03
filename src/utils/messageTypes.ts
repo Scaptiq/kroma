@@ -24,7 +24,7 @@ export interface ParsedEmote {
     type: 'emote';
     url: string;
     name: string;
-    provider: 'twitch' | '7tv' | 'bttv' | 'ffz';
+    provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz';
     isZeroWidth?: boolean;
     overlayEmote?: boolean;
 }
@@ -68,7 +68,14 @@ export interface ChatMessage {
         id: string;
         url: string;
         title: string;
-        provider: 'twitch' | '7tv' | 'bttv' | 'ffz' | 'chatterino';
+        provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'chatterino';
+    }>;
+    platform?: 'twitch' | 'kick';
+    kickBadges?: Array<{
+        type: string;
+        text?: string;
+        count?: number;
+        active?: boolean;
     }>;
 
     // Shared Chat

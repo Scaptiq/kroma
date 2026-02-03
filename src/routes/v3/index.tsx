@@ -74,13 +74,15 @@ export default function ChatSetup() {
 
     // Form state
     const [channel, setChannel] = createSignal("");
+    const [platform, setPlatform] = createSignal<'twitch' | 'kick' | 'both'>('twitch');
     const [showPronouns, setShowPronouns] = createSignal(true);
+    const [showPlatformBadge, setShowPlatformBadge] = createSignal(true);
     const [showBadges, setShowBadges] = createSignal(true);
     const [showEmotes, setShowEmotes] = createSignal(true);
     const [showTimestamps, setShowTimestamps] = createSignal(false);
     const [showSharedChat, setShowSharedChat] = createSignal(true);
     const [showNamePaints, setShowNamePaints] = createSignal(true);
-    const [showRoomState, setShowRoomState] = createSignal(true);
+    const [showRoomState, setShowRoomState] = createSignal(false);
     const [showReplies, setShowReplies] = createSignal(true);
     const [hideCommands, setHideCommands] = createSignal(false);
     const [hideBots, setHideBots] = createSignal(false);
@@ -119,14 +121,20 @@ export default function ChatSetup() {
             return;
         }
 
-        if (!showPronouns()) params.set('pronouns', 'false');
+        if (platform() !== 'twitch') params.set('platform', platform());
+        if (!showPlatformBadge()) params.set('platformBadge', 'false');
+        if (platform() !== 'kick') {
+            if (!showPronouns()) params.set('pronouns', 'false');
+        }
         if (!showBadges()) params.set('badges', 'false');
         if (!showEmotes()) params.set('emotes', 'false');
         if (showTimestamps()) params.set('timestamps', 'true');
-        if (!showSharedChat()) params.set('shared', 'false');
+        if (platform() !== 'kick') {
+            if (!showSharedChat()) params.set('shared', 'false');
+            if (showRoomState()) params.set('roomState', 'true');
+            if (!showReplies()) params.set('replies', 'false');
+        }
         if (!showNamePaints()) params.set('paints', 'false');
-        if (!showRoomState()) params.set('roomState', 'false');
-        if (!showReplies()) params.set('replies', 'false');
         if (hideCommands()) params.set('hideCommands', 'true');
         if (hideBots()) params.set('hideBots', 'true');
         if (maxMessages() !== 50) params.set('maxMessages', String(maxMessages()));
@@ -152,14 +160,20 @@ export default function ChatSetup() {
         // We can reuse the search params logic but it's bound to the effect.
         // Replicating simple string generation for the input box:
         const url = new URL(base);
-        if (!showPronouns()) url.searchParams.set('pronouns', 'false');
+        if (platform() !== 'twitch') url.searchParams.set('platform', platform());
+        if (!showPlatformBadge()) url.searchParams.set('platformBadge', 'false');
+        if (platform() !== 'kick') {
+            if (!showPronouns()) url.searchParams.set('pronouns', 'false');
+        }
         if (!showBadges()) url.searchParams.set('badges', 'false');
         if (!showEmotes()) url.searchParams.set('emotes', 'false');
         if (showTimestamps()) url.searchParams.set('timestamps', 'true');
-        if (!showSharedChat()) url.searchParams.set('shared', 'false');
+        if (platform() !== 'kick') {
+            if (!showSharedChat()) url.searchParams.set('shared', 'false');
+            if (showRoomState()) url.searchParams.set('roomState', 'true');
+            if (!showReplies()) url.searchParams.set('replies', 'false');
+        }
         if (!showNamePaints()) url.searchParams.set('paints', 'false');
-        if (!showRoomState()) url.searchParams.set('roomState', 'false');
-        if (!showReplies()) url.searchParams.set('replies', 'false');
         if (hideCommands()) url.searchParams.set('hideCommands', 'true');
         if (hideBots()) url.searchParams.set('hideBots', 'true');
         if (maxMessages() !== 50) url.searchParams.set('maxMessages', String(maxMessages()));
@@ -310,12 +324,56 @@ export default function ChatSetup() {
                                         <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #F472B6, #C084FC, #2DD4BF)' }} />
                                         <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Hello there! 👋</Typography>
                                         <Typography sx={{ color: 'rgba(255,255,255,0.7)', mb: 3 }}>
-                                            Welcome to Kroma. Enter your Twitch channel below to get started.
+                                            Welcome to Kroma. Choose a platform and enter your channel below to get started.
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                                            <Button
+                                                fullWidth
+                                                variant={platform() === 'twitch' ? 'contained' : 'outlined'}
+                                                onClick={() => setPlatform('twitch')}
+                                                sx={{
+                                                    borderRadius: 2,
+                                                    ...(platform() === 'twitch'
+                                                        ? { background: 'linear-gradient(135deg, #9147ff, #5b1fd6)' }
+                                                        : { borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.8)' })
+                                                }}
+                                            >
+                                                Twitch
+                                            </Button>
+                                            <Button
+                                                fullWidth
+                                                variant={platform() === 'kick' ? 'contained' : 'outlined'}
+                                                onClick={() => setPlatform('kick')}
+                                                sx={{
+                                                    borderRadius: 2,
+                                                    ...(platform() === 'kick'
+                                                        ? { background: 'linear-gradient(135deg, #22c55e, #15803d)' }
+                                                        : { borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.8)' })
+                                                }}
+                                            >
+                                                Kick
+                                            </Button>
+                                            <Button
+                                                fullWidth
+                                                variant={platform() === 'both' ? 'contained' : 'outlined'}
+                                                onClick={() => setPlatform('both')}
+                                                sx={{
+                                                    borderRadius: 2,
+                                                    ...(platform() === 'both'
+                                                        ? { background: 'linear-gradient(135deg, #0ea5e9, #a855f7)' }
+                                                        : { borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.8)' })
+                                                }}
+                                            >
+                                                Both
+                                            </Button>
+                                        </Box>
+                                        <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', mb: 2 }}>
+                                            Both mode connects to Kick and Twitch using the same channel name.
                                         </Typography>
                                         <TextField
                                             fullWidth
                                             variant="outlined"
-                                            placeholder="twitch_username"
+                                            placeholder={platform() === 'kick' ? "kick_username" : platform() === 'both' ? "channel_name" : "twitch_username"}
                                             value={channel()}
                                             onChange={(e) => setChannel(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                                             sx={{
@@ -328,9 +386,26 @@ export default function ChatSetup() {
                                                 }
                                             }}
                                             InputProps={{
-                                                startAdornment: <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>twitch.tv/</Typography>
+                                                startAdornment: (
+                                                    <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
+                                                        {platform() === 'kick' ? 'kick.com/' : platform() === 'both' ? 'kick.com/ + twitch.tv/' : 'twitch.tv/'}
+                                                    </Typography>
+                                                )
                                             }}
                                         />
+                                        <Show when={platform() === 'kick' || platform() === 'both'}>
+                                            <Alert
+                                                severity="info"
+                                                sx={{
+                                                    mt: 2,
+                                                    bgcolor: 'rgba(34, 197, 94, 0.1)',
+                                                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                                                    color: '#bbf7d0'
+                                                }}
+                                            >
+                                                Kick mode is live. Some Twitch-only features are hidden in Kick mode.
+                                            </Alert>
+                                        </Show>
                                     </Paper>
 
                                     {/* Feature Tabs */}
@@ -354,61 +429,71 @@ export default function ChatSetup() {
                                             </For>
                                         </Paper>
 
-                                        <Paper class="glass-panel" sx={{ p: 4, minHeight: 450 }}>
+                                        <Paper class="glass-panel" sx={{ p: 4, minHeight: platform() === 'kick' ? 320 : 450 }}>
 
                                             {/* General */}
                                             <Show when={activeTab() === 0}>
                                                 <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>Chat Features</Typography>
                                                 <Stack spacing={2}>
-                                                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <FormControlLabel
-                                                            control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />}
-                                                            label={<Typography sx={{ fontWeight: 500 }}>Shared Chat Integration</Typography>}
-                                                        />
-                                                        <Typography variant="caption" sx={{ display: 'block', pl: 4, color: 'text.secondary', mt: -0.5 }}>
-                                                            Support for Stream Together / Guest Star sources.
-                                                        </Typography>
-                                                    </Box>
+                                                    <Show when={platform() !== 'kick'}>
+                                                        <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <FormControlLabel
+                                                                control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />}
+                                                                label={<Typography sx={{ fontWeight: 500 }}>Shared Chat Integration</Typography>}
+                                                            />
+                                                            <Typography variant="caption" sx={{ display: 'block', pl: 4, color: 'text.secondary', mt: -0.5 }}>
+                                                                Support for Stream Together / Guest Star sources.
+                                                            </Typography>
+                                                        </Box>
+                                                    </Show>
 
-                                                    <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Show Replies" />
+                                                    <FormControlLabel control={<Switch checked={showPlatformBadge()} onChange={(_, v) => setShowPlatformBadge(v)} color="secondary" />} label="Show Platform Badge" />
+                                                    <Typography variant="caption" sx={{ display: 'block', pl: 4, color: 'text.secondary', mt: -0.5 }}>
+                                                        Adds a small Twitch/Kick tag before usernames.
+                                                    </Typography>
+                                                    <Show when={platform() !== 'kick'}>
+                                                        <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Show Replies" />
+                                                    </Show>
                                                     <FormControlLabel control={<Switch checked={showTimestamps()} onChange={(_, v) => setShowTimestamps(v)} color="secondary" />} label="Show Timestamps" />
 
                                                     <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', my: 1 }} />
 
-                                                    <Box sx={{ p: 2, borderRadius: 3, background: 'linear-gradient(135deg, rgba(192, 132, 252, 0.1), rgba(244, 114, 182, 0.1), rgba(221, 160, 221, 0.1))', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                        <FormControlLabel
-                                                            control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
-                                                            label={<Typography sx={{ fontWeight: 600, color: '#F472B6' }}>Show Pronouns</Typography>}
-                                                        />
-                                                        <Show when={showPronouns()}>
-                                                            <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 1 }}>
-                                                                Displays user pronouns from <a href="https://pr.alejo.io" target="_blank" style={{ color: '#fff', "font-weight": 700 }}>Alejo.io</a>.
-                                                            </Typography>
-
-                                                            {/* Pride Pronouns Toggle */}
-                                                            <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.12), rgba(255, 140, 0, 0.12), rgba(255, 237, 0, 0.12), rgba(0, 200, 80, 0.12), rgba(80, 120, 255, 0.12), rgba(180, 80, 255, 0.12))', border: '1px solid rgba(255,255,255,0.2)' }}>
-                                                                <FormControlLabel
-                                                                    control={<Switch checked={pridePronouns()} onChange={(_, v) => setPridePronouns(v)} color="primary" />}
-                                                                    label={
-                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                            <span style={{ "font-size": '1.1rem' }}>🏳️‍🌈</span>
-                                                                            <Typography sx={{
-                                                                                fontWeight: 700,
-                                                                                fontSize: '0.9rem',
-                                                                                color: '#fff',
-                                                                                textShadow: '0 0 10px rgba(255, 140, 0, 0.5), 0 0 20px rgba(180, 80, 255, 0.3)'
-                                                                            }}>
-                                                                                Pride Mode
-                                                                            </Typography>
-                                                                        </Box>
-                                                                    }
-                                                                />
-                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', pl: 4, mt: -0.5 }}>
-                                                                    All pronoun badges become animated rainbow
+                                                    <Show when={platform() !== 'kick'}>
+                                                        <Box sx={{ p: 2, borderRadius: 3, background: 'linear-gradient(135deg, rgba(192, 132, 252, 0.1), rgba(244, 114, 182, 0.1), rgba(221, 160, 221, 0.1))', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                            <FormControlLabel
+                                                                control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
+                                                                label={<Typography sx={{ fontWeight: 600, color: '#F472B6' }}>Show Pronouns</Typography>}
+                                                            />
+                                                            <Show when={showPronouns()}>
+                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 1 }}>
+                                                                    Displays user pronouns from <a href="https://pr.alejo.io" target="_blank" style={{ color: '#fff', "font-weight": 700 }}>Alejo.io</a>.
                                                                 </Typography>
-                                                            </Box>
-                                                        </Show>
-                                                    </Box>
+
+                                                                {/* Pride Pronouns Toggle */}
+                                                                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.12), rgba(255, 140, 0, 0.12), rgba(255, 237, 0, 0.12), rgba(0, 200, 80, 0.12), rgba(80, 120, 255, 0.12), rgba(180, 80, 255, 0.12))', border: '1px solid rgba(255,255,255,0.2)' }}>
+                                                                    <FormControlLabel
+                                                                        control={<Switch checked={pridePronouns()} onChange={(_, v) => setPridePronouns(v)} color="primary" />}
+                                                                        label={
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                <span style={{ "font-size": '1.1rem' }}>🏳️‍🌈</span>
+                                                                                <Typography sx={{
+                                                                                    fontWeight: 700,
+                                                                                    fontSize: '0.9rem',
+                                                                                    color: '#fff',
+                                                                                    textShadow: '0 0 10px rgba(255, 140, 0, 0.5), 0 0 20px rgba(180, 80, 255, 0.3)'
+                                                                                }}>
+                                                                                    Pride Mode
+                                                                                </Typography>
+                                                                            </Box>
+                                                                        }
+                                                                    />
+                                                                    <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', pl: 4, mt: -0.5 }}>
+                                                                        All pronoun badges become animated rainbow
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Show>
+                                                        </Box>
+                                                    </Show>
                                                 </Stack>
                                             </Show>
 
@@ -456,8 +541,10 @@ export default function ChatSetup() {
                                                         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Elements</Typography>
                                                         <Stack spacing={1}>
                                                             <FormControlLabel control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="secondary" />} label="Subscriber Badges" />
-                                                            <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
-                                                            <FormControlLabel control={<Switch checked={showRoomState()} onChange={(_, v) => setShowRoomState(v)} color="secondary" />} label="Show Room State" />
+                                                    <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
+                                                    <Show when={platform() !== 'kick'}>
+                                                        <FormControlLabel control={<Switch checked={showRoomState()} onChange={(_, v) => setShowRoomState(v)} color="secondary" />} label="Show Room State" />
+                                                    </Show>
 
                                                             <Box sx={{ pt: 1 }}>
                                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -664,7 +751,7 @@ export default function ChatSetup() {
 
                     <Box sx={{ py: 3, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)' }}>
                         <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-                            Made with 💜 by <a href="https://www.twitch.tv/scaptiq" target="_blank" style={{ color: '#F472B6', "text-decoration": 'none', "font-weight": 600 }}>scaptiq</a> • Original by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: '#2DD4BF', "text-decoration": 'none', "font-weight": 600 }}>ChatIS</a>
+                            Made with 💜 by <a href="https://www.twitch.tv/scaptiq" target="_blank" style={{ color: '#F472B6', "text-decoration": 'none', "font-weight": 600 }}>scaptiq</a> • Inspired by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: '#2DD4BF', "text-decoration": 'none', "font-weight": 600 }}>ChatIS</a>
                         </Typography>
                     </Box>
                 </Box>

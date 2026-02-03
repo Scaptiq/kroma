@@ -8,42 +8,94 @@ export interface NamePaint {
     name: string;
     // CSS properties for styling
     color?: string;
-    background?: string;
     backgroundImage?: string;
     filter?: string;
-    image_url?: string;
+    repeat?: boolean;
+    backgroundSize?: string;
+    backgroundPosition?: string;
 }
 
-// Cache for all available paints (fetched once)
+// Cache for all available paints (fetched once with TTL)
 let globalPaintsCache: Map<string, any> | null = null;
 let paintsFetchPromise: Promise<Map<string, any>> | null = null;
+let globalPaintsFetchedAt = 0;
 
-// Cache for user paint lookups
-const userPaintCache = new Map<string, NamePaint | null>();
+// Cache for user paint lookups with TTL
+const userPaintCache = new Map<string, { value: NamePaint | null; fetchedAt: number }>();
 const pendingUserRequests = new Map<string, Promise<NamePaint | null>>();
+const USER_PAINT_TTL = 5 * 60 * 1000; // 5 minutes
+const GLOBAL_PAINT_TTL = 10 * 60 * 1000; // 10 minutes
 
-/**
- * Decode 7TV color int32 to RGBA string
- * Colors are signed int32 in ARGB format
- */
-function decodeColor(color: number): string {
-    // Handle signed int32 - convert to unsigned
-    const unsigned = color >>> 0;
-    const a = ((unsigned >>> 24) & 0xFF) / 255;
-    const r = (unsigned >> 16) & 0xFF;
-    const g = (unsigned >> 8) & 0xFF;
-    const b = unsigned & 0xFF;
+function decodePaintColor(color: number | string): { r: number; g: number; b: number; a: number } {
+    if (typeof color === "string") {
+        const trimmed = color.trim();
+        if (trimmed.startsWith("#")) {
+            const hex = trimmed.slice(1);
+            if (hex.length === 6) {
+                const value = parseInt(hex, 16);
+                if (!Number.isNaN(value)) {
+                    return {
+                        r: (value >> 16) & 0xff,
+                        g: (value >> 8) & 0xff,
+                        b: value & 0xff,
+                        a: 1
+                    };
+                }
+            }
+            if (hex.length === 8) {
+                const value = parseInt(hex, 16);
+                if (!Number.isNaN(value)) {
+                    return {
+                        r: (value >> 24) & 0xff,
+                        g: (value >> 16) & 0xff,
+                        b: (value >> 8) & 0xff,
+                        a: (value & 0xff) / 255
+                    };
+                }
+            }
+        }
 
-    // If alpha is 0, default to 1 (fully opaque)
-    const alpha = a === 0 ? 1 : a;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        const numeric = Number(trimmed);
+        if (!Number.isNaN(numeric)) {
+            color = numeric;
+        } else {
+            return { r: 255, g: 255, b: 255, a: 1 };
+        }
+    }
+
+    const unsigned = (color as number) >>> 0;
+    const r = (unsigned >>> 24) & 0xff;
+    const g = (unsigned >> 16) & 0xff;
+    const b = (unsigned >> 8) & 0xff;
+    const a = (unsigned & 0xff) / 255;
+    return { r, g, b, a };
+}
+
+function colorToCss(color: { r: number; g: number; b: number; a: number }): string {
+    if (color.a >= 0.999) {
+        return `rgb(${color.r}, ${color.g}, ${color.b})`;
+    }
+    return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
+}
+
+function toOpaque(color: { r: number; g: number; b: number; a: number }) {
+    return { ...color, a: 1 };
+}
+
+function formatStopPosition(value: number | undefined): number {
+    if (value === undefined || Number.isNaN(value)) return 0;
+    if (value <= 1) return value * 100;
+    if (value <= 100) return value;
+    return 100;
 }
 
 /**
  * Fetch all global paints from 7TV GraphQL API
  */
 async function fetchGlobalPaints(): Promise<Map<string, any>> {
-    if (globalPaintsCache) return globalPaintsCache;
+    if (globalPaintsCache && Date.now() - globalPaintsFetchedAt < GLOBAL_PAINT_TTL) {
+        return globalPaintsCache;
+    }
     if (paintsFetchPromise) return paintsFetchPromise;
 
     paintsFetchPromise = (async () => {
@@ -69,6 +121,7 @@ async function fetchGlobalPaints(): Promise<Map<string, any>> {
             }
 
             globalPaintsCache = paintMap;
+            globalPaintsFetchedAt = Date.now();
             console.log(`🎨 Loaded ${paintMap.size} 7TV paints`);
             return paintMap;
         } catch (e) {
@@ -93,34 +146,49 @@ function paintToCSS(paint: any): NamePaint | null {
 
     // Handle solid color
     if (paint.color !== undefined && paint.color !== null) {
-        result.color = decodeColor(paint.color);
+        const color = decodePaintColor(paint.color);
+        result.color = colorToCss(toOpaque(color));
     }
+
+    const isRepeating = Boolean(paint.repeat);
 
     // Handle gradients & images
     if (paint.function === 'URL' && paint.image_url) {
         result.backgroundImage = `url("${paint.image_url}")`;
-        result.background = `url("${paint.image_url}")`; // Fallback/base
+        result.repeat = isRepeating;
+        result.backgroundSize = isRepeating ? 'auto' : 'cover';
+        result.backgroundPosition = 'center';
     } else if (paint.stops && Array.isArray(paint.stops) && paint.stops.length > 0) {
         const gradientStops = paint.stops.map((stop: any) => {
-            const color = decodeColor(stop.color);
-            const position = stop.at !== undefined ? stop.at * 100 : 0;
+            const color = colorToCss(toOpaque(decodePaintColor(stop.color)));
+            const position = formatStopPosition(stop.at);
             return `${color} ${position}%`;
         }).join(', ');
 
         const angle = paint.angle !== undefined ? paint.angle : 0;
-        const isRadial = paint.function === 'RADIAL_GRADIENT';
+        const fn = String(paint.function || '').toUpperCase();
+        const isRadial = fn === 'RADIAL_GRADIENT';
+        const isConic = fn === 'CONIC_GRADIENT';
 
-        if (isRadial) {
-            result.background = `radial-gradient(circle, ${gradientStops})`;
+        if (isConic) {
+            result.backgroundImage = isRepeating
+                ? `repeating-conic-gradient(from ${angle}deg, ${gradientStops})`
+                : `conic-gradient(from ${angle}deg, ${gradientStops})`;
+        } else if (isRadial) {
+            result.backgroundImage = isRepeating
+                ? `repeating-radial-gradient(circle, ${gradientStops})`
+                : `radial-gradient(circle, ${gradientStops})`;
         } else {
-            result.background = `linear-gradient(${angle}deg, ${gradientStops})`;
+            result.backgroundImage = isRepeating
+                ? `repeating-linear-gradient(${angle}deg, ${gradientStops})`
+                : `linear-gradient(${angle}deg, ${gradientStops})`;
         }
     }
 
     // Handle shadows/drop shadows
     if (paint.shadows && Array.isArray(paint.shadows) && paint.shadows.length > 0) {
         const shadows = paint.shadows.map((shadow: any) => {
-            const color = decodeColor(shadow.color);
+            const color = colorToCss(toOpaque(decodePaintColor(shadow.color)));
             const x = shadow.x_offset || 0;
             const y = shadow.y_offset || 0;
             const blur = shadow.radius || 0;
@@ -136,13 +204,18 @@ function paintToCSS(paint: any): NamePaint | null {
 /**
  * Fetch 7TV name paint for a user
  */
-export async function get7TVUserPaint(userId: string): Promise<NamePaint | null> {
-    if (userPaintCache.has(userId)) {
-        return userPaintCache.get(userId) || null;
+export async function get7TVUserPaint(
+    userId: string,
+    platform: 'twitch' | 'kick' = 'twitch'
+): Promise<NamePaint | null> {
+    const cacheKey = `${platform}:${userId}`;
+    const cached = userPaintCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < USER_PAINT_TTL) {
+        return cached.value || null;
     }
 
-    if (pendingUserRequests.has(userId)) {
-        return pendingUserRequests.get(userId)!;
+    if (pendingUserRequests.has(cacheKey)) {
+        return pendingUserRequests.get(cacheKey)!;
     }
 
     const promise = (async () => {
@@ -151,9 +224,9 @@ export async function get7TVUserPaint(userId: string): Promise<NamePaint | null>
             const allPaints = await fetchGlobalPaints();
 
             // Fetch user data
-            const res = await fetch(`https://7tv.io/v3/users/twitch/${userId}`);
+            const res = await fetch(`https://7tv.io/v3/users/${platform}/${userId}`);
             if (!res.ok) {
-                userPaintCache.set(userId, null);
+                userPaintCache.set(cacheKey, { value: null, fetchedAt: Date.now() });
                 return null;
             }
 
@@ -164,7 +237,7 @@ export async function get7TVUserPaint(userId: string): Promise<NamePaint | null>
             if (paintId && allPaints.has(paintId)) {
                 const paintData = allPaints.get(paintId);
                 const paint = paintToCSS(paintData);
-                userPaintCache.set(userId, paint);
+                userPaintCache.set(cacheKey, { value: paint, fetchedAt: Date.now() });
                 return paint;
             }
 
@@ -173,24 +246,24 @@ export async function get7TVUserPaint(userId: string): Promise<NamePaint | null>
                 const result: NamePaint = {
                     id: 'solid-color',
                     name: 'Solid Color',
-                    color: decodeColor(data.user.style.color)
+                    color: colorToCss(toOpaque(decodePaintColor(data.user.style.color)))
                 };
-                userPaintCache.set(userId, result);
+                userPaintCache.set(cacheKey, { value: result, fetchedAt: Date.now() });
                 return result;
             }
 
-            userPaintCache.set(userId, null);
+            userPaintCache.set(cacheKey, { value: null, fetchedAt: Date.now() });
             return null;
         } catch (e) {
             console.error('Failed to fetch 7TV paint for user:', userId, e);
-            userPaintCache.set(userId, null);
+            userPaintCache.set(cacheKey, { value: null, fetchedAt: Date.now() });
             return null;
         } finally {
-            pendingUserRequests.delete(userId);
+            pendingUserRequests.delete(cacheKey);
         }
     })();
 
-    pendingUserRequests.set(userId, promise);
+    pendingUserRequests.set(cacheKey, promise);
     return promise;
 }
 
@@ -213,13 +286,15 @@ export function getNamePaintStyles(paint: NamePaint | null): {
 
     const style: { [key: string]: string } = {};
 
-    if (paint.backgroundImage || paint.background) {
+    if (paint.backgroundImage) {
         // Use background-clip for gradient or image text
-        style['background-image'] = paint.backgroundImage || paint.background!;
-        if (paint.background && !paint.backgroundImage) {
-            style['background'] = paint.background;
+        style['background-image'] = paint.backgroundImage;
+        if (paint.backgroundSize || paint.backgroundPosition || paint.repeat) {
+            style['background-size'] = paint.backgroundSize || 'cover';
+            style['background-position'] = paint.backgroundPosition || 'center';
+            style['background-repeat'] = paint.repeat ? 'repeat' : 'no-repeat';
         }
-        style['background-size'] = 'cover';
+        style['display'] = 'inline-block';
         style['background-clip'] = 'text';
         style['-webkit-background-clip'] = 'text';
         style['-webkit-text-fill-color'] = 'transparent';

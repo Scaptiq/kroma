@@ -43,15 +43,7 @@ const PRONOUN_DISPLAY: { [key: string]: PronounInfo } = {
 
 const PRONOUNS_API_BASE = "https://pronouns.alejo.io/api";
 
-// Cache with TTL
-interface CacheEntry {
-    data: PronounInfo | null;
-    timestamp: number;
-}
-
-const pronounCache = new Map<string, CacheEntry>();
 const pendingRequests = new Map<string, Promise<PronounInfo | null>>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Get pronouns for a single user
@@ -67,16 +59,6 @@ export async function getUserPronouns(username: string): Promise<string | null> 
 export async function getUserPronounInfo(username: string): Promise<PronounInfo | null> {
     const lowerUser = username.toLowerCase();
 
-    // Check cache with TTL
-    if (pronounCache.has(lowerUser)) {
-        const entry = pronounCache.get(lowerUser)!;
-        if (Date.now() - entry.timestamp < CACHE_TTL) {
-            return entry.data;
-        }
-        // Cache expired, remove it
-        pronounCache.delete(lowerUser);
-    }
-
     // Check if there's already a pending request
     if (pendingRequests.has(lowerUser)) {
         return pendingRequests.get(lowerUser)!;
@@ -84,10 +66,11 @@ export async function getUserPronounInfo(username: string): Promise<PronounInfo 
 
     const promise = (async () => {
         try {
-            const response = await fetch(`${PRONOUNS_API_BASE}/users/${lowerUser}`);
+            const response = await fetch(`${PRONOUNS_API_BASE}/users/${lowerUser}?_=${Date.now()}`, {
+                cache: "no-store"
+            });
 
             if (!response.ok) {
-                pronounCache.set(lowerUser, { data: null, timestamp: Date.now() });
                 return null;
             }
 
@@ -101,7 +84,6 @@ export async function getUserPronounInfo(username: string): Promise<PronounInfo 
                 const pronounId = pronoun.pronoun_id || pronoun.id;
                 if (pronounId && PRONOUN_DISPLAY[pronounId]) {
                     const info = PRONOUN_DISPLAY[pronounId];
-                    pronounCache.set(lowerUser, { data: info, timestamp: Date.now() });
                     return info;
                 }
 
@@ -113,7 +95,6 @@ export async function getUserPronounInfo(username: string): Promise<PronounInfo 
                         plural: pronoun.object,
                         color: '#A855F7' // Default purple for unknown pronouns
                     };
-                    pronounCache.set(lowerUser, { data: info, timestamp: Date.now() });
                     return info;
                 }
 
@@ -121,16 +102,13 @@ export async function getUserPronounInfo(username: string): Promise<PronounInfo 
                 if (pronoun.slug || pronoun.pronoun_id) {
                     const slug = pronoun.slug || pronoun.pronoun_id;
                     const info: PronounInfo = { display: slug, color: '#A855F7' }; // Default purple
-                    pronounCache.set(lowerUser, { data: info, timestamp: Date.now() });
                     return info;
                 }
             }
 
-            pronounCache.set(lowerUser, { data: null, timestamp: Date.now() });
             return null;
         } catch (e) {
             console.error("Failed to fetch pronouns for", username, e);
-            pronounCache.set(lowerUser, { data: null, timestamp: Date.now() });
             return null;
         } finally {
             pendingRequests.delete(lowerUser);
@@ -183,5 +161,5 @@ export async function batchGetPronouns(usernames: string[]): Promise<Map<string,
  * Clear the pronoun cache
  */
 export function clearPronounCache(): void {
-    pronounCache.clear();
+    // No-op: caching disabled
 }

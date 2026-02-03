@@ -33,7 +33,11 @@ import {
 } from "~/utils/messageTypes";
 
 // Configuration interface
+type ChatPlatform = 'twitch' | 'kick' | 'both';
+
 interface ChatConfig {
+    platform: ChatPlatform;
+    showPlatformBadge: boolean;
     showPronouns: boolean;
     pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
     showBadges: boolean;
@@ -57,6 +61,8 @@ interface ChatConfig {
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
+    platform: 'twitch',
+    showPlatformBadge: true,
     showPronouns: true,
     pridePronouns: false,  // Default to standard purple badges
     showBadges: true,
@@ -76,7 +82,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     emoteScale: 1.0,
     blockedUsers: [],
     customBots: [],
-    showRoomState: true,
+    showRoomState: false,
 };
 
 // Known bot usernames
@@ -93,7 +99,8 @@ export default function Chat() {
 
     // State
     const [messages, setMessages] = createSignal<ChatMessage[]>([]);
-    const [isConnected, setIsConnected] = createSignal(false);
+    const [twitchConnected, setTwitchConnected] = createSignal(false);
+    const [kickConnected, setKickConnected] = createSignal(false);
     const [channelId, setChannelId] = createSignal<string | null>(null);
 
     // Room State (slow mode, emote-only, etc.)
@@ -116,12 +123,19 @@ export default function Chat() {
 
     // Refs
     let client: tmi.Client | null = null;
+    let kickSocket: WebSocket | null = null;
+    let kickReconnectTimer: number | undefined;
+    let kickReconnectAttempts = 0;
+    let kickSubscriberBadges: Array<{ months: number; url: string }> = [];
+    let kickFollowerBadges: Array<{ months: number; url: string }> = [];
+    let kickChannelUserId: string | null = null;
     let keepAlive = true;
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
     let global7TV: Emote[] = [];
     let channel7TV: Emote[] = [];
+    let channel7TVKick: Emote[] = [];
     let globalBTTV: Emote[] = [];
     let channelBTTV: Emote[] = [];
     let globalFFZ: Emote[] = [];
@@ -130,16 +144,18 @@ export default function Chat() {
     // Parse config from URL params reactively
     const config = createMemo<ChatConfig>(() => ({
         ...DEFAULT_CONFIG,
-        showPronouns: searchParams.pronouns !== 'false',
+        platform: searchParams.platform === 'kick' ? 'kick' : searchParams.platform === 'both' ? 'both' : 'twitch',
+        showPlatformBadge: searchParams.platformBadge !== 'false',
+        showPronouns: searchParams.pronouns !== 'false' && searchParams.platform !== 'kick',
         pridePronouns: searchParams.pridePronouns === 'true',
         showBadges: searchParams.badges !== 'false',
         showEmotes: searchParams.emotes !== 'false',
         showTimestamps: searchParams.timestamps === 'true',
-        showSharedChat: searchParams.shared !== 'false',
+        showSharedChat: searchParams.shared !== 'false' && searchParams.platform !== 'kick',
         showNamePaints: searchParams.paints !== 'false',
         hideCommands: searchParams.hideCommands === 'true',
         hideBots: searchParams.hideBots === 'true',
-        showReplies: searchParams.replies !== 'false',
+        showReplies: searchParams.replies !== 'false' && searchParams.platform !== 'kick',
         maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
         fontSize: parseInt(searchParams.fontSize || '16') || 16,
         fontFamily: searchParams.font || 'Segoe UI',
@@ -148,8 +164,15 @@ export default function Chat() {
         emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
         blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
         customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-        showRoomState: searchParams.roomState !== 'false',
+        showRoomState: searchParams.roomState !== 'false' && searchParams.platform !== 'kick',
     }));
+
+    const isConnected = createMemo(() => {
+        const platform = config().platform;
+        if (platform === 'both') return twitchConnected() || kickConnected();
+        if (platform === 'kick') return kickConnected();
+        return twitchConnected();
+    });
 
     // Scroll to bottom when new messages arrive
     createEffect(() => {
@@ -166,9 +189,9 @@ export default function Chat() {
      */
     const addSystemMessage = (msg: ChatMessage) => {
         setMessages(prev => {
-            const updated = [msg, ...prev];
+            const updated = [...prev, msg];
             if (updated.length > config().maxMessages) {
-                return updated.slice(0, config().maxMessages);
+                return updated.slice(-config().maxMessages);
             }
             return updated;
         });
@@ -177,9 +200,16 @@ export default function Chat() {
     /**
      * Find emote in all providers
      */
-    const findEmote = (code: string): Emote | null => {
+    const findEmote = (code: string, platform: 'twitch' | 'kick' = 'twitch'): Emote | null => {
+        const channelEmotes = platform === 'kick' ? channel7TVKick : channel7TV;
+        if (platform === 'kick') {
+            return channelEmotes.find(e => e.code === code) ||
+                global7TV.find(e => e.code === code) ||
+                null;
+        }
+
         // Priority: Channel > Global, 7TV > BTTV > FFZ
-        return channel7TV.find(e => e.code === code) ||
+        return channelEmotes.find(e => e.code === code) ||
             channelBTTV.find(e => e.code === code) ||
             channelFFZ.find(e => e.code === code) ||
             global7TV.find(e => e.code === code) ||
@@ -240,7 +270,7 @@ export default function Chat() {
 
                 // Check for third-party emotes
                 if (config().showEmotes) {
-                    const emote = findEmote(trimmed);
+                    const emote = findEmote(trimmed, 'twitch');
                     if (emote) {
                         const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
                         finalParts.push({
@@ -269,6 +299,136 @@ export default function Chat() {
 
         if (cursor < text.length) {
             processTextChunk(text.substring(cursor));
+        }
+
+        return finalParts.filter(p => p !== "");
+    };
+
+    const getKickEmoteUrl = (emote: any): string | undefined => {
+        const directUrl = emote?.url || emote?.image_url || emote?.image;
+        if (typeof directUrl === "string" && directUrl.length) return directUrl;
+
+        const images = emote?.images || emote?.image;
+        if (images) {
+            const candidates = [
+                images.fullsize,
+                images.full,
+                images.original,
+                images.large,
+                images.medium,
+                images.small,
+                images?.url,
+            ];
+            for (const candidate of candidates) {
+                if (typeof candidate === "string" && candidate.length) return candidate;
+            }
+        }
+
+        if (emote?.id) {
+            return `https://files.kick.com/emotes/${emote.id}/fullsize`;
+        }
+
+        return undefined;
+    };
+
+    const parseKickMessageContent = (text: string, emotes?: any[]): ParsedPart[] => {
+        if (Array.isArray(emotes) && emotes.length > 0) {
+            const positioned = emotes
+                .map((emote) => {
+                    const start = emote?.start ?? emote?.start_index ?? emote?.startIndex ?? emote?.positions?.[0];
+                    const end = emote?.end ?? emote?.end_index ?? emote?.endIndex ?? emote?.positions?.[1];
+                    if (typeof start !== "number" || typeof end !== "number") return null;
+                    const url = getKickEmoteUrl(emote);
+                    if (!url) return null;
+                    return {
+                        start,
+                        end,
+                        url,
+                        name: String(emote?.name || emote?.code || emote?.id || "emote")
+                    };
+                })
+                .filter(Boolean) as Array<{ start: number; end: number; url: string; name: string }>;
+
+            if (positioned.length > 0) {
+                positioned.sort((a, b) => a.start - b.start);
+                const parts: ParsedPart[] = [];
+                let cursor = 0;
+                for (const emote of positioned) {
+                    if (emote.start > cursor) {
+                        parts.push(text.slice(cursor, emote.start));
+                    }
+                    parts.push({
+                        type: "emote",
+                        url: emote.url,
+                        name: emote.name,
+                        provider: "kick"
+                    });
+                    cursor = emote.end + 1;
+                }
+                if (cursor < text.length) {
+                    parts.push(text.slice(cursor));
+                }
+                return parts.filter(p => p !== "");
+            }
+        }
+
+        const parts: ParsedPart[] = [];
+        const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
+        let lastIndex = 0;
+        let match: RegExpExecArray | null = null;
+
+        while ((match = emoteRegex.exec(text)) !== null) {
+            const [full, id, name] = match;
+            if (match.index > lastIndex) {
+                parts.push(text.slice(lastIndex, match.index));
+            }
+            parts.push({
+                type: "emote",
+                url: `https://files.kick.com/emotes/${id}/fullsize`,
+                name,
+                provider: "kick"
+            });
+            lastIndex = match.index + full.length;
+        }
+
+        if (lastIndex < text.length) {
+            parts.push(text.slice(lastIndex));
+        }
+
+        const finalParts: ParsedPart[] = [];
+        const processTextChunk = (chunk: string) => {
+            if (!chunk) return;
+            const words = chunk.split(/(\s+)/);
+            for (const word of words) {
+                const trimmed = word.trim();
+                if (!trimmed) {
+                    finalParts.push(word);
+                    continue;
+                }
+                if (config().showEmotes) {
+                    const emote = findEmote(trimmed, 'kick');
+                    if (emote) {
+                        const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
+                        finalParts.push({
+                            type: "emote",
+                            url: emote.url,
+                            name: emote.code,
+                            provider: emote.provider,
+                            isZeroWidth
+                        });
+                        continue;
+                    }
+                }
+                finalParts.push(word);
+            }
+        };
+
+        for (const part of parts) {
+            if (typeof part === 'string') {
+                processTextChunk(part);
+            } else {
+                finalParts.push(part);
+            }
         }
 
         return finalParts.filter(p => p !== "");
@@ -338,7 +498,7 @@ export default function Chat() {
         // Determine message type
         let messageType: MessageType = 'chat';
         const isAction = tags['message-type'] === 'action';
-        const isFirstMsg = tags['first-msg'] === true;
+        const isFirstMsg = tags['first-msg'] === true || tags['first-msg'] === '1' || tags['first-msg'] === 1;
 
         if (isAction) messageType = 'action';
         if (isFirstMsg) messageType = 'firstmessage';
@@ -390,6 +550,7 @@ export default function Chat() {
             isFirstMessage: isFirstMsg,
             isHighlighted: messageType === 'highlighted',
             badges,
+            platform: 'twitch',
             isShared,
             sourceRoomId: isShared ? sourceRoomId : undefined,
             reply,
@@ -421,7 +582,7 @@ export default function Chat() {
         }
 
         if (config().showNamePaints) {
-            get7TVUserPaint(userId).then(paint => {
+            get7TVUserPaint(userId, 'twitch').then(paint => {
                 if (!keepAlive || !paint) return;
                 const { style } = getNamePaintStyles(paint);
                 setMessages(prev => prev.map(m =>
@@ -447,10 +608,10 @@ export default function Chat() {
         }
 
         // Fetch third-party badges
-        Promise.all([
-            fetch7TVUserBadges(userId),
-            fetchFFZUserBadges(userId)
-        ]).then(([sevenTVBadges, ffzBadges]) => {
+            Promise.all([
+                fetch7TVUserBadges(userId, 'twitch'),
+                fetchFFZUserBadges(userId)
+            ]).then(([sevenTVBadges, ffzBadges]) => {
             if (!keepAlive) return;
             const extraBadges = [...sevenTVBadges, ...ffzBadges];
             if (extraBadges.length === 0) return;
@@ -461,6 +622,273 @@ export default function Chat() {
                     : m
             ));
         });
+    };
+
+    const KICK_PUSHER_URL = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0-rc2&flash=false";
+
+    const fetchKickChannelData = async (channel: string) => {
+        try {
+            const res = await fetch(`/api/kick?channel=${encodeURIComponent(channel)}`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            console.error("Failed to fetch Kick channel info:", e);
+            return null;
+        }
+    };
+
+    const applyKickBadgesFromChannel = (channelData: any) => {
+        const subs = Array.isArray(channelData?.subscriber_badges) ? channelData.subscriber_badges : [];
+        const followers = Array.isArray(channelData?.follower_badges) ? channelData.follower_badges : [];
+
+        kickSubscriberBadges = subs
+            .map((badge: any) => ({
+                months: typeof badge?.months === "number" ? badge.months : Number(badge?.months),
+                url: badge?.badge_image?.src || badge?.badge_image?.url
+            }))
+            .filter((badge: any) => Number.isFinite(badge.months) && typeof badge.url === "string");
+
+        kickFollowerBadges = followers
+            .map((badge: any) => ({
+                months: typeof badge?.months === "number" ? badge.months : Number(badge?.months),
+                url: badge?.badge_image?.src || badge?.badge_image?.url
+            }))
+            .filter((badge: any) => Number.isFinite(badge.months) && typeof badge.url === "string");
+    };
+
+
+    const parseKickPayload = (rawData: unknown) => {
+        if (!rawData) return null;
+        if (typeof rawData === "string") {
+            try {
+                return JSON.parse(rawData);
+            } catch (e) {
+                return null;
+            }
+        }
+        return rawData;
+    };
+
+    const KICK_GLOBAL_BADGES: Record<string, string> = {
+        trainwreckstv: "https://www.kickdatabase.com/kickBadges/trainwreckstv.svg",
+        staff: "https://www.kickdatabase.com/kickBadges/staff.svg",
+        verified: "https://www.kickdatabase.com/kickBadges/verified.svg",
+        sidekick: "https://www.kickdatabase.com/kickBadges/sidekick.svg",
+        broadcaster: "https://www.kickdatabase.com/kickBadges/broadcaster.svg",
+        moderator: "https://www.kickdatabase.com/kickBadges/moderator.svg",
+        vip: "https://www.kickdatabase.com/kickBadges/vip.svg",
+        og: "https://www.kickdatabase.com/kickBadges/og.svg",
+        founder: "https://www.kickdatabase.com/kickBadges/founder.svg",
+        subscriber: "https://www.kickdatabase.com/kickBadges/subscriber.svg",
+        subgifter: "https://www.kickdatabase.com/kickBadges/subGifter.svg",
+        subgifter25: "https://www.kickdatabase.com/kickBadges/subGifter25.svg",
+        subgifter50: "https://www.kickdatabase.com/kickBadges/subGifter50.svg",
+        subgifter100: "https://www.kickdatabase.com/kickBadges/subGifter100.svg",
+        subgifter200: "https://www.kickdatabase.com/kickBadges/subGifter200.svg",
+    };
+
+    const normalizeKickBadgeType = (value: string) => value
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/_/g, "");
+
+    const getKickGlobalBadgeUrl = (type: string, count?: number) => {
+        const normalized = normalizeKickBadgeType(type);
+        if (normalized === "subgifter" || normalized === "subgifterbadge") {
+            if (typeof count === "number") {
+                if (count >= 200) return KICK_GLOBAL_BADGES.subgifter200;
+                if (count >= 100) return KICK_GLOBAL_BADGES.subgifter100;
+                if (count >= 50) return KICK_GLOBAL_BADGES.subgifter50;
+                if (count >= 25) return KICK_GLOBAL_BADGES.subgifter25;
+            }
+            return KICK_GLOBAL_BADGES.subgifter;
+        }
+
+        return KICK_GLOBAL_BADGES[normalized];
+    };
+
+    const PLATFORM_LOGOS: Record<"twitch" | "kick", string> = {
+        twitch: "https://upload.wikimedia.org/wikipedia/commons/4/41/Twitch_Glitch_Logo_White.svg",
+        kick: "https://commons.wikimedia.org/wiki/Special:FilePath/Kick.com_icon_logo.svg",
+    };
+
+    const handleKickMessage = (payload: any) => {
+        if (!payload) return;
+
+        const fallbackId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `kick-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const messageId = payload.message_id || payload?.message?.id || payload?.message?.message_id || fallbackId;
+        const content = payload.content || payload?.message?.message || payload?.message?.content || "";
+        const sender = payload.sender || payload?.user || payload?.message?.user || {};
+        const identity = sender.identity || {};
+        const rawBadges = Array.isArray(identity.badges) ? identity.badges : [];
+        const kickBadgeImages: Badge[] = [];
+        const kickBadges = rawBadges
+            .filter((badge: any) => badge?.active !== false)
+            .map((badge: any) => {
+                const badgeType = String(badge.type || badge.name || badge.key || "badge");
+                const imageUrl = badge?.image_url || badge?.image || badge?.icon || badge?.url || badge?.badge_image;
+                const badgeCount = typeof badge.count === "number" ? badge.count : undefined;
+                const fallbackUrl = getKickGlobalBadgeUrl(badgeType, badgeCount);
+                if (typeof imageUrl === "string" && imageUrl.length) {
+                    kickBadgeImages.push({
+                        id: `kick-${badgeType}`,
+                        title: badgeType.replace(/_/g, " "),
+                        url: imageUrl,
+                        provider: "kick"
+                    });
+                } else if (fallbackUrl) {
+                    kickBadgeImages.push({
+                        id: `kick-${badgeType}`,
+                        title: badgeType.replace(/_/g, " "),
+                        url: fallbackUrl,
+                        provider: "kick"
+                    });
+                }
+                return {
+                    type: badgeType,
+                    text: badge.text ? String(badge.text) : undefined,
+                    count: badgeCount,
+                    active: badge.active === undefined ? undefined : Boolean(badge.active)
+                };
+            });
+        const subBadge = rawBadges.find((badge: any) => String(badge?.type || "").toLowerCase().includes("sub"));
+        const subMonthsRaw = subBadge?.count ?? subBadge?.months ?? subBadge?.text ?? sender?.months_subscribed ?? payload?.months_subscribed;
+        const subMonths = typeof subMonthsRaw === "number" ? subMonthsRaw : Number(subMonthsRaw);
+        if (Number.isFinite(subMonths) && kickSubscriberBadges.length > 0) {
+            const sorted = [...kickSubscriberBadges].sort((a, b) => a.months - b.months);
+            const match = sorted.reduce((acc, badge) => (badge.months <= subMonths ? badge : acc), sorted[0]);
+            if (match?.url) {
+                kickBadgeImages.unshift({
+                    id: `kick-subscriber-${match.months}`,
+                    title: `Subscriber (${match.months}m)`,
+                    url: match.url,
+                    provider: "kick"
+                });
+            }
+        }
+
+        const followerBadge = rawBadges.find((badge: any) => String(badge?.type || "").toLowerCase().includes("follower"));
+        const followerMonthsRaw = followerBadge?.count ?? followerBadge?.months ?? followerBadge?.text ?? sender?.months_following ?? payload?.months_following;
+        const followerMonths = typeof followerMonthsRaw === "number" ? followerMonthsRaw : Number(followerMonthsRaw);
+        if (Number.isFinite(followerMonths) && kickFollowerBadges.length > 0) {
+            const sorted = [...kickFollowerBadges].sort((a, b) => a.months - b.months);
+            const match = sorted.reduce((acc, badge) => (badge.months <= followerMonths ? badge : acc), sorted[0]);
+            if (match?.url) {
+                kickBadgeImages.unshift({
+                    id: `kick-follower-${match.months}`,
+                    title: `Follower (${match.months}m)`,
+                    url: match.url,
+                    provider: "kick"
+                });
+            }
+        }
+        const username = sender.username || sender.slug || sender.name || "unknown";
+        const userId = sender.user_id || sender.id || "";
+        const rawCreatedAt = payload.created_at ?? payload?.message?.created_at;
+        const timestamp = rawCreatedAt
+            ? (() => {
+                const numeric = Number(rawCreatedAt);
+                if (!Number.isNaN(numeric)) {
+                    return numeric > 10_000_000_000 ? numeric : numeric * 1000;
+                }
+                const parsed = new Date(String(rawCreatedAt)).getTime();
+                return Number.isNaN(parsed) ? Date.now() : parsed;
+            })()
+            : Date.now();
+
+        if (!content) return;
+
+        // Filter bots (Kick uses usernames too)
+        if (config().hideBots && KNOWN_BOTS.has(String(username).toLowerCase())) {
+            return;
+        }
+
+        // Filter custom blocked users
+        if (config().blockedUsers.includes(String(username).toLowerCase())) {
+            return;
+        }
+
+        // Filter custom bots
+        if (config().customBots.includes(String(username).toLowerCase())) {
+            return;
+        }
+
+        // Filter commands
+        if (config().hideCommands && content.startsWith('!')) {
+            return;
+        }
+
+        const parsedContent = parseKickMessageContent(String(content), payload?.emotes || payload?.message?.emotes);
+        const nameColor = typeof identity?.color === "string"
+            ? identity.color
+            : typeof identity?.username_color === "string"
+                ? identity.username_color
+                : generateColor(String(username));
+        const newMessage: ChatMessage = {
+            id: String(messageId),
+            username: String(username),
+            displayName: String(username),
+            userId: String(userId),
+            content: String(content),
+            parsedContent,
+            color: nameColor,
+            timestamp,
+            type: 'chat',
+            isAction: false,
+            isFirstMessage: false,
+            isHighlighted: false,
+            badges: kickBadgeImages,
+            kickBadges: kickBadges.length ? kickBadges : undefined,
+            platform: 'kick',
+            isShared: false
+        };
+
+        setMessages(prev => {
+            const updated = [...prev, newMessage];
+            if (updated.length > config().maxMessages) {
+                return updated.slice(-config().maxMessages);
+            }
+            return updated;
+        });
+
+        if (config().showPronouns) {
+            getUserPronounInfo(String(username)).then(pronounInfo => {
+                if (!keepAlive || !pronounInfo) return;
+                setMessages(prev => prev.map(m =>
+                    m.id === String(messageId) ? {
+                        ...m,
+                        pronouns: pronounInfo.display,
+                        pronounColor: pronounInfo.color,
+                        pronounIsGradient: pronounInfo.isGradient
+                    } : m
+                ));
+            });
+        }
+
+        if (config().showNamePaints) {
+            get7TVUserPaint(String(userId), 'kick').then(paint => {
+                if (!keepAlive || !paint) return;
+                const { style } = getNamePaintStyles(paint);
+                setMessages(prev => prev.map(m =>
+                    m.id === String(messageId) ? { ...m, paint: style } : m
+                ));
+            });
+        }
+
+        if (config().showBadges) {
+            Promise.all([
+                fetch7TVUserBadges(String(userId), 'kick')
+            ]).then(([sevenTVBadges]) => {
+                if (!keepAlive || sevenTVBadges.length === 0) return;
+                setMessages(prev => prev.map(m =>
+                    m.id === String(messageId)
+                        ? { ...m, badges: [...m.badges, ...sevenTVBadges] }
+                        : m
+                ));
+            });
+        }
     };
 
     /**
@@ -511,74 +939,167 @@ export default function Chat() {
         return classes.join(' ');
     };
 
+    const connectKick = async (channel: string) => {
+        console.log(`🟢 Kroma - Connecting to Kick #${channel}`);
+
+        const kickData = await fetchKickChannelData(channel);
+        const chatroomId = kickData?.chatroomId ?? kickData?.channel?.chatroom?.id ?? kickData?.chatroom?.id ?? null;
+        if (!chatroomId) {
+            console.error("Failed to resolve Kick chatroom ID.");
+            return;
+        }
+
+        applyKickBadgesFromChannel(kickData?.channel);
+        const kickUserId = kickData?.channel?.id ?? kickData?.channel?.user_id ?? kickData?.channel?.user?.id ?? null;
+        if (kickUserId) {
+            kickChannelUserId = String(kickUserId);
+        }
+
+        // 7TV assets for Kick (global + channel)
+        const [g7tv, c7tv, _paints, _7tvBadges] = await Promise.all([
+            fetch7TVGlobalEmotes(),
+            kickChannelUserId ? fetch7TVChannelEmotes(kickChannelUserId, 'kick') : Promise.resolve([]),
+            preloadPaints(),
+            preload7TVBadges()
+        ]);
+
+        global7TV = g7tv;
+        channel7TVKick = c7tv;
+
+        const connect = () => {
+            if (!keepAlive) return;
+
+            kickSocket?.close();
+            kickSocket = new WebSocket(KICK_PUSHER_URL);
+
+            kickSocket.onopen = () => {
+                kickReconnectAttempts = 0;
+                const subscribeMsg = {
+                    event: "pusher:subscribe",
+                    data: {
+                        auth: "",
+                        channel: `chatrooms.${chatroomId}.v2`
+                    }
+                };
+                kickSocket?.send(JSON.stringify(subscribeMsg));
+            };
+
+            kickSocket.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    const eventName = payload?.event;
+
+                    if (eventName === "pusher:connection_established") {
+                        setKickConnected(true);
+                        return;
+                    }
+
+                    if (eventName === "pusher:error") {
+                        setKickConnected(false);
+                        console.error("Kick Pusher error:", payload?.data);
+                        return;
+                    }
+
+                    if (eventName === "App\\Events\\ChatMessageEvent" || eventName === "App\\Events\\ChatMessageSentEvent") {
+                        const data = parseKickPayload(payload.data);
+                        handleKickMessage(data);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse Kick message:", e);
+                }
+            };
+
+            kickSocket.onclose = () => {
+                setKickConnected(false);
+                if (!keepAlive) return;
+                const delay = Math.min(10000, 1000 * Math.pow(2, kickReconnectAttempts));
+                kickReconnectAttempts += 1;
+                kickReconnectTimer = window.setTimeout(connect, delay);
+            };
+
+            kickSocket.onerror = (error) => {
+                console.error("Kick WebSocket error:", error);
+            };
+        };
+
+        connect();
+    };
+
     onMount(async () => {
         const channel = params.channel;
         if (!channel) return;
 
-        console.log(`🎮 Kroma - Connecting to #${channel}`);
+        const platform = config().platform;
 
-        // Pre-cache channel info
-        cacheChannelByUsername(channel);
-
-        // Fetch channel ID
-        try {
-            const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
-            if (res.ok) {
-                const data = await res.json();
-                const id = data[0]?.id;
-                if (id) {
-                    setChannelId(id);
-                    console.log(`📺 Channel ID: ${id}`);
-                }
-            }
-        } catch (e) {
-            console.error('Failed to get channel ID:', e);
+        if (platform === 'kick' || platform === 'both') {
+            await connectKick(channel);
         }
 
-        const currentChannelId = channelId();
-        console.log(`📺 Using Channel ID: ${currentChannelId}`);
+        if (platform === 'twitch' || platform === 'both') {
+            console.log(`🎮 Kroma - Connecting to #${channel}`);
 
-        // Fetch all resources in parallel
-        const [
-            _globalBadges,
-            _channelBadges,
-            _paints,
-            _7tvBadges,
-            g7tv, c7tv,
-            gBttv, cBttv,
-            gFfz, cFfz
-        ] = await Promise.all([
-            fetchGlobalTwitchBadges(),
-            currentChannelId ? fetchChannelTwitchBadges(currentChannelId) : Promise.resolve(),
-            preloadPaints(), // Preload 7TV paints
-            preload7TVBadges(), // Preload 7TV badges
-            fetch7TVGlobalEmotes(),
-            currentChannelId ? fetch7TVChannelEmotes(currentChannelId) : Promise.resolve([]),
-            fetchBTTVGlobalEmotes(),
-            currentChannelId ? fetchBTTVChannelEmotes(currentChannelId) : Promise.resolve([]),
-            fetchFFZGlobalEmotes(),
-            fetchFFZChannelEmotes(channel)
-        ]);
+            // Pre-cache channel info
+            cacheChannelByUsername(channel);
 
-        global7TV = g7tv;
-        channel7TV = c7tv;
-        globalBTTV = gBttv;
-        channelBTTV = cBttv;
-        globalFFZ = gFfz;
-        channelFFZ = cFfz;
+            // Fetch channel ID
+            try {
+                const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const id = data[0]?.id;
+                    if (id) {
+                        setChannelId(id);
+                        console.log(`📺 Channel ID: ${id}`);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to get channel ID:', e);
+            }
 
-        console.log(`✨ Loaded emotes - 7TV: ${global7TV.length + channel7TV.length}, BTTV: ${globalBTTV.length + channelBTTV.length}, FFZ: ${globalFFZ.length + channelFFZ.length}`);
+            const currentChannelId = channelId();
+            console.log(`📺 Using Channel ID: ${currentChannelId}`);
+
+            // Fetch all resources in parallel
+            const [
+                _globalBadges,
+                _channelBadges,
+                _paints,
+                _7tvBadges,
+                g7tv, c7tv,
+                gBttv, cBttv,
+                gFfz, cFfz
+            ] = await Promise.all([
+                fetchGlobalTwitchBadges(),
+                currentChannelId ? fetchChannelTwitchBadges(currentChannelId) : Promise.resolve(),
+                preloadPaints(), // Preload 7TV paints
+                preload7TVBadges(), // Preload 7TV badges
+                fetch7TVGlobalEmotes(),
+                currentChannelId ? fetch7TVChannelEmotes(currentChannelId) : Promise.resolve([]),
+                fetchBTTVGlobalEmotes(),
+                currentChannelId ? fetchBTTVChannelEmotes(currentChannelId) : Promise.resolve([]),
+                fetchFFZGlobalEmotes(),
+                fetchFFZChannelEmotes(channel)
+            ]);
+
+            global7TV = g7tv;
+            channel7TV = c7tv;
+            globalBTTV = gBttv;
+            channelBTTV = cBttv;
+            globalFFZ = gFfz;
+            channelFFZ = cFfz;
+
+            console.log(`✨ Loaded emotes - 7TV: ${global7TV.length + channel7TV.length}, BTTV: ${globalBTTV.length + channelBTTV.length}, FFZ: ${globalFFZ.length + channelFFZ.length}`);
 
 
-        if (channel) {
-            // Connect to Twitch
-            client = new tmi.Client({
-                channels: [channel],
-                connection: {
-                    secure: true,
-                    reconnect: true,
-                },
-            });
+            if (channel) {
+                // Connect to Twitch
+                client = new tmi.Client({
+                    channels: [channel],
+                    connection: {
+                        secure: true,
+                        reconnect: true,
+                    },
+                });
 
             client.on("message", handleMessage);
 
@@ -598,6 +1119,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false,
                     subInfo: {
                         months: 1,
@@ -624,6 +1146,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false,
                     subInfo: {
                         months: months,
@@ -650,6 +1173,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false,
                     subInfo: {
                         months: 1,
@@ -677,6 +1201,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false,
                     subInfo: {
                         months: 1,
@@ -704,6 +1229,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false,
                     raidInfo: {
                         displayName: username,
@@ -775,6 +1301,7 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false
                 };
                 addSystemMessage(modMessage);
@@ -796,25 +1323,27 @@ export default function Chat() {
                     isFirstMessage: false,
                     isHighlighted: false,
                     badges: [],
+                    platform: 'twitch',
                     isShared: false
                 };
                 addSystemMessage(modMessage);
             });
 
             client.on("connected", () => {
-                setIsConnected(true);
+                setTwitchConnected(true);
                 console.log(`✅ Connected to #${channel}`);
             });
 
             client.on("disconnected", () => {
-                setIsConnected(false);
+                setTwitchConnected(false);
                 console.log(`❌ Disconnected from #${channel}`);
             });
 
-            try {
-                await client.connect();
-            } catch (err) {
-                console.error("Failed to connect to Twitch:", err);
+                try {
+                    await client.connect();
+                } catch (err) {
+                    console.error("Failed to connect to Twitch:", err);
+                }
             }
         }
 
@@ -826,6 +1355,12 @@ export default function Chat() {
         if (client) {
             client.disconnect().catch(console.error);
         }
+        if (kickReconnectTimer) {
+            window.clearTimeout(kickReconnectTimer);
+        }
+        if (kickSocket) {
+            kickSocket.close();
+        }
     });
 
     return (
@@ -833,7 +1368,7 @@ export default function Chat() {
             <MySiteTitle>#{params.channel}</MySiteTitle>
 
             {/* Room State Indicators */}
-            <Show when={config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
+            <Show when={config().platform !== 'kick' && config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
                 <div class="room-state-bar">
                     <Show when={roomState().slowMode > 0}>
                         <span class="room-state-badge room-state-badge--slow">
@@ -929,8 +1464,16 @@ export default function Chat() {
                                     </Show>
 
                                     {/* Badges */}
-                                    <Show when={config().showBadges && msg.badges.length > 0}>
-                                        <div class="flex gap-0.5 self-center shrink-0 select-none">
+                                    <Show when={(config().showBadges && msg.badges.length > 0) || config().showPlatformBadge}>
+                                        <div class="flex gap-1 self-center shrink-0 select-none items-center">
+                                            <Show when={config().showPlatformBadge}>
+                                                <img
+                                                    src={PLATFORM_LOGOS[(msg.platform || config().platform) === 'kick' ? 'kick' : 'twitch']}
+                                                    alt={(msg.platform || config().platform) === 'kick' ? 'Kick' : 'Twitch'}
+                                                    class="platform-logo"
+                                                    loading="lazy"
+                                                />
+                                            </Show>
                                             <For each={msg.badges}>
                                                 {(badge) => (
                                                     <img
