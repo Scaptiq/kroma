@@ -360,6 +360,89 @@ export default function Chat() {
         return finalParts.filter(p => p !== "");
     };
 
+    const emojiToTwemojiUrl = (emoji: string) => {
+        const codepoints = Array.from(emoji)
+            .map(char => char.codePointAt(0)?.toString(16))
+            .filter(Boolean)
+            .join("-");
+        return `https://twemoji.maxcdn.com/v/latest/svg/${codepoints}.svg`;
+    };
+
+    const parseYouTubeMessageContent = (text: string, emojis?: any[]): ParsedPart[] => {
+        if (!config().showEmotes) return [text];
+
+        let parts: ParsedPart[] = [text];
+
+        const shortcodeMap = new Map<string, string>();
+        if (Array.isArray(emojis)) {
+            emojis.forEach((emoji: any) => {
+                const shortcode = emoji?.shortcode || emoji?.shortcodes?.[0] || emoji?.emojiId;
+                const imageUrl = emoji?.imageUrl || emoji?.url || emoji?.image?.thumbnails?.[0]?.url;
+                if (shortcode && imageUrl) {
+                    shortcodeMap.set(shortcode, imageUrl);
+                }
+            });
+        }
+
+        if (shortcodeMap.size > 0) {
+            const escaped = Array.from(shortcodeMap.keys()).map((value) =>
+                value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+            );
+            const regex = new RegExp(`(${escaped.join("|")})`, "g");
+            const nextParts: ParsedPart[] = [];
+            parts.forEach((part) => {
+                if (typeof part !== "string") {
+                    nextParts.push(part);
+                    return;
+                }
+                const split = part.split(regex);
+                split.forEach((chunk) => {
+                    const imageUrl = shortcodeMap.get(chunk);
+                    if (imageUrl) {
+                        nextParts.push({
+                            type: "emote",
+                            url: imageUrl,
+                            name: chunk,
+                            provider: "youtube"
+                        });
+                    } else if (chunk) {
+                        nextParts.push(chunk);
+                    }
+                });
+            });
+            parts = nextParts;
+        }
+
+        const emojiRegex = /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*?/gu;
+        const withTwemoji: ParsedPart[] = [];
+        parts.forEach((part) => {
+            if (typeof part !== "string") {
+                withTwemoji.push(part);
+                return;
+            }
+            let lastIndex = 0;
+            for (const match of part.matchAll(emojiRegex)) {
+                const index = match.index ?? 0;
+                const emoji = match[0];
+                if (index > lastIndex) {
+                    withTwemoji.push(part.slice(lastIndex, index));
+                }
+                withTwemoji.push({
+                    type: "emote",
+                    url: emojiToTwemojiUrl(emoji),
+                    name: emoji,
+                    provider: "twemoji"
+                });
+                lastIndex = index + emoji.length;
+            }
+            if (lastIndex < part.length) {
+                withTwemoji.push(part.slice(lastIndex));
+            }
+        });
+
+        return withTwemoji.filter((part) => part !== "");
+    };
+
     const getKickEmoteUrl = (emote: any): string | undefined => {
         const directUrl = emote?.url || emote?.image_url || emote?.image;
         if (typeof directUrl === "string" && directUrl.length) return directUrl;
@@ -1111,6 +1194,11 @@ export default function Chat() {
         let content = '';
         let messageType: MessageType = 'chat';
         let isHighlighted = false;
+        const emojiList =
+            item?.snippet?.textMessageDetails?.emoji ||
+            item?.snippet?.emojis ||
+            item?.snippet?.emoji ||
+            [];
 
         if (snippet.type === 'textMessageEvent') {
             content = snippet.textMessageDetails?.messageText || snippet.displayMessage || '';
@@ -1132,7 +1220,7 @@ export default function Chat() {
         const displayName = author.displayName || 'YouTube';
         const username = displayName.toLowerCase().replace(/\s+/g, '');
 
-        const parsedContent = parseMessageContent(content, undefined, undefined, 'youtube');
+        const parsedContent = parseYouTubeMessageContent(content, emojiList);
 
         const newMessage: ChatMessage = {
             id: item.id,

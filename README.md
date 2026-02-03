@@ -160,7 +160,7 @@ https://kroma.scaptiq.live/chat/yourChannel?pridePronouns=true&fontSize=20&font=
 
 ### YouTube Setup
 - Set `YOUTUBE_API_KEY` on the server (Cloudflare Pages env or local `.env`) to enable live chat polling.
-- YouTube messages use randomized name colors and support 7TV emotes + paints.
+- YouTube messages use randomized name colors and support 7TV emotes + paints, plus YouTube emojis (including custom).
 
 ---
 

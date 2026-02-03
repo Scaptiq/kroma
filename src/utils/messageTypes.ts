@@ -24,7 +24,7 @@ export interface ParsedEmote {
     type: 'emote';
     url: string;
     name: string;
-    provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz';
+    provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'youtube' | 'twemoji';
     isZeroWidth?: boolean;
     overlayEmote?: boolean;
 }
