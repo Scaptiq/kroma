@@ -4,7 +4,7 @@ import { useNavigate } from "solid-start";
 export default function Home() {
     const navigate = useNavigate();
     onMount(() => {
-        navigate("/v3/", { replace: true });
+        navigate("/setup", { replace: true });
     });
     return null;
 }

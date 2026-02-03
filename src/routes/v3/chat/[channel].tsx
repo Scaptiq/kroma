@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from "solid-start";
+import { useParams, useSearchParams, useLocation, useNavigate } from "solid-start";
 import { createSignal, onMount, onCleanup, For, Show, createEffect, createMemo } from "solid-js";
 import tmi from "tmi.js";
 import MySiteTitle from "~/components/MySiteTitle";
@@ -33,10 +33,13 @@ import {
 } from "~/utils/messageTypes";
 
 // Configuration interface
-type ChatPlatform = 'twitch' | 'kick' | 'both';
+type ChatPlatform = 'twitch' | 'kick' | 'youtube';
 
 interface ChatConfig {
-    platform: ChatPlatform;
+    platforms: ChatPlatform[];
+    twitchChannel: string;
+    kickChannel: string;
+    youtubeChannel: string;
     showPlatformBadge: boolean;
     showPronouns: boolean;
     pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
@@ -61,7 +64,10 @@ interface ChatConfig {
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
-    platform: 'twitch',
+    platforms: ['twitch'],
+    twitchChannel: '',
+    kickChannel: '',
+    youtubeChannel: '',
     showPlatformBadge: true,
     showPronouns: true,
     pridePronouns: false,  // Default to standard purple badges
@@ -96,11 +102,21 @@ const KNOWN_BOTS = new Set([
 export default function Chat() {
     const params = useParams<{ channel: string }>();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    createEffect(() => {
+        if (location.pathname.startsWith('/v3/')) {
+            const nextPath = `/chat/${params.channel || ''}${location.search}`;
+            navigate(nextPath, { replace: true });
+        }
+    });
 
     // State
     const [messages, setMessages] = createSignal<ChatMessage[]>([]);
     const [twitchConnected, setTwitchConnected] = createSignal(false);
     const [kickConnected, setKickConnected] = createSignal(false);
+    const [youtubeConnected, setYoutubeConnected] = createSignal(false);
     const [channelId, setChannelId] = createSignal<string | null>(null);
 
     // Room State (slow mode, emote-only, etc.)
@@ -130,48 +146,80 @@ export default function Chat() {
     let kickFollowerBadges: Array<{ months: number; url: string }> = [];
     let kickChannelUserId: string | null = null;
     let keepAlive = true;
+    let youtubePollTimer: number | undefined;
+    let youtubeNextPageToken: string | null = null;
+    let youtubeLiveChatId: string | null = null;
+    let youtubeSeenMessageIds = new Set<string>();
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
     let global7TV: Emote[] = [];
     let channel7TV: Emote[] = [];
     let channel7TVKick: Emote[] = [];
+    let channel7TVYouTube: Emote[] = [];
     let globalBTTV: Emote[] = [];
     let channelBTTV: Emote[] = [];
     let globalFFZ: Emote[] = [];
     let channelFFZ: Emote[] = [];
 
     // Parse config from URL params reactively
-    const config = createMemo<ChatConfig>(() => ({
-        ...DEFAULT_CONFIG,
-        platform: searchParams.platform === 'kick' ? 'kick' : searchParams.platform === 'both' ? 'both' : 'twitch',
-        showPlatformBadge: searchParams.platformBadge !== 'false',
-        showPronouns: searchParams.pronouns !== 'false' && searchParams.platform !== 'kick',
-        pridePronouns: searchParams.pridePronouns === 'true',
-        showBadges: searchParams.badges !== 'false',
-        showEmotes: searchParams.emotes !== 'false',
-        showTimestamps: searchParams.timestamps === 'true',
-        showSharedChat: searchParams.shared !== 'false' && searchParams.platform !== 'kick',
-        showNamePaints: searchParams.paints !== 'false',
-        hideCommands: searchParams.hideCommands === 'true',
-        hideBots: searchParams.hideBots === 'true',
-        showReplies: searchParams.replies !== 'false' && searchParams.platform !== 'kick',
-        maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
-        fontSize: parseInt(searchParams.fontSize || '16') || 16,
-        fontFamily: searchParams.font || 'Segoe UI',
-        fadeOutMessages: searchParams.fadeOut === 'true',
-        fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
-        emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
-        blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-        customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-        showRoomState: searchParams.roomState === 'true' && searchParams.platform !== 'kick',
-    }));
+    const config = createMemo<ChatConfig>(() => {
+        const platformsParam = searchParams.platforms
+            ? searchParams.platforms.split(',').map(p => p.trim().toLowerCase()).filter(Boolean)
+            : [];
+        const legacy = searchParams.platform?.toLowerCase();
+        const rawPlatforms = platformsParam.length > 0
+            ? platformsParam
+            : legacy === 'combined' || legacy === 'both'
+                ? ['twitch', 'kick']
+                : legacy === 'kick'
+                    ? ['kick']
+                    : legacy === 'youtube'
+                        ? ['youtube']
+                        : ['twitch'];
+        const platforms = rawPlatforms.filter(p => p === 'twitch' || p === 'kick' || p === 'youtube');
+        if (platforms.length === 0) platforms.push('twitch');
+        const hasTwitch = platforms.includes('twitch');
+        const fallbackChannel = (params.channel || '').toLowerCase();
+        const twitchChannel = (searchParams.twitch || (platforms.includes('twitch') ? fallbackChannel : '')).toLowerCase();
+        const kickChannel = (searchParams.kick || (platforms.includes('kick') ? fallbackChannel : '')).toLowerCase();
+        const youtubeChannel = (searchParams.youtube || (platforms.includes('youtube') ? fallbackChannel : '')).toLowerCase();
+
+        return {
+            ...DEFAULT_CONFIG,
+            platforms: platforms as ChatPlatform[],
+            twitchChannel,
+            kickChannel,
+            youtubeChannel,
+            showPlatformBadge: searchParams.platformBadge !== 'false',
+            showPronouns: searchParams.pronouns !== 'false' && hasTwitch,
+            pridePronouns: searchParams.pridePronouns === 'true',
+            showBadges: searchParams.badges !== 'false',
+            showEmotes: searchParams.emotes !== 'false',
+            showTimestamps: searchParams.timestamps === 'true',
+            showSharedChat: searchParams.shared !== 'false' && hasTwitch,
+            showNamePaints: searchParams.paints !== 'false',
+            hideCommands: searchParams.hideCommands === 'true',
+            hideBots: searchParams.hideBots === 'true',
+            showReplies: searchParams.replies !== 'false' && hasTwitch,
+            maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
+            fontSize: parseInt(searchParams.fontSize || '16') || 16,
+            fontFamily: searchParams.font || 'Segoe UI',
+            fadeOutMessages: searchParams.fadeOut === 'true',
+            fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
+            emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
+            blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
+            customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
+            showRoomState: searchParams.roomState === 'true' && hasTwitch,
+        };
+    });
 
     const isConnected = createMemo(() => {
-        const platform = config().platform;
-        if (platform === 'both') return twitchConnected() || kickConnected();
-        if (platform === 'kick') return kickConnected();
-        return twitchConnected();
+        const platforms = config().platforms;
+        if (platforms.includes('twitch') && twitchConnected()) return true;
+        if (platforms.includes('kick') && kickConnected()) return true;
+        if (platforms.includes('youtube') && youtubeConnected()) return true;
+        return false;
     });
 
     // Scroll to bottom when new messages arrive
@@ -200,14 +248,21 @@ export default function Chat() {
     /**
      * Find emote in all providers
      */
-    const findEmote = (code: string, platform: 'twitch' | 'kick' = 'twitch'): Emote | null => {
-        const channelEmotes = platform === 'kick' ? channel7TVKick : channel7TV;
+    const findEmote = (code: string, platform: 'twitch' | 'kick' | 'youtube' = 'twitch'): Emote | null => {
         if (platform === 'kick') {
+            const channelEmotes = channel7TVKick;
             return channelEmotes.find(e => e.code === code) ||
                 global7TV.find(e => e.code === code) ||
                 null;
         }
 
+        if (platform === 'youtube') {
+            return channel7TVYouTube.find(e => e.code === code) ||
+                global7TV.find(e => e.code === code) ||
+                null;
+        }
+
+        const channelEmotes = channel7TV;
         // Priority: Channel > Global, 7TV > BTTV > FFZ
         return channelEmotes.find(e => e.code === code) ||
             channelBTTV.find(e => e.code === code) ||
@@ -224,7 +279,8 @@ export default function Chat() {
     const parseMessageContent = (
         text: string,
         twitchEmotes: { [id: string]: string[] } | undefined,
-        bits?: number
+        bits?: number,
+        platform: 'twitch' | 'kick' | 'youtube' = 'twitch'
     ): ParsedPart[] => {
         // First, handle Twitch native emotes
         let parts: { start: number; end: number; type: 'emote'; content: ParsedPart }[] = [];
@@ -270,7 +326,7 @@ export default function Chat() {
 
                 // Check for third-party emotes
                 if (config().showEmotes) {
-                    const emote = findEmote(trimmed, 'twitch');
+                    const emote = findEmote(trimmed, platform);
                     if (emote) {
                         const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
                         finalParts.push({
@@ -534,7 +590,7 @@ export default function Chat() {
 
         const messageId = tags.id || crypto.randomUUID();
         const badges = await getUserBadges(badgeSource, userId);
-        const parsedContent = parseMessageContent(message, tags.emotes, bits);
+        const parsedContent = parseMessageContent(message, tags.emotes, bits, 'twitch');
 
         const newMessage: ChatMessage = {
             id: messageId,
@@ -706,9 +762,10 @@ export default function Chat() {
         return KICK_GLOBAL_BADGES[normalized];
     };
 
-    const PLATFORM_LOGOS: Record<"twitch" | "kick", string> = {
+    const PLATFORM_LOGOS: Record<"twitch" | "kick" | "youtube", string> = {
         twitch: "https://cdn.brandfetch.io/idIwZCwD2f/theme/dark/symbol.svg?c=1bxid64Mup7aczewSAYMX&t=1668070397594",
         kick: "data:image/svg+xml;utf8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20stroke-linejoin%3D%22round%22%20stroke-miterlimit%3D%222%22%3E%3Cpath%20d%3D%22M37%20.036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z%22%20fill%3D%22%2353fc18%22/%3E%3C/svg%3E",
+        youtube: "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg",
     };
 
     const handleKickMessage = (payload: any) => {
@@ -1024,25 +1081,162 @@ export default function Chat() {
         connect();
     };
 
-    onMount(async () => {
-        const channel = params.channel;
-        if (!channel) return;
+    const getYouTubeLiveChat = async (channel: string) => {
+        try {
+            const res = await fetch(`/api/youtube?channel=${encodeURIComponent(channel)}`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            console.error("Failed to fetch YouTube chat info:", e);
+            return null;
+        }
+    };
 
-        const platform = config().platform;
+    const getYouTubeAuthorColor = (author: any) => {
+        if (author?.isChatOwner) return '#facc15';
+        if (author?.isChatModerator) return '#60a5fa';
+        if (author?.isChatSponsor) return '#34d399';
+        return '#ffffff';
+    };
 
-        if (platform === 'kick' || platform === 'both') {
-            await connectKick(channel);
+    const addYouTubeMessage = (item: any) => {
+        if (!item?.id || youtubeSeenMessageIds.has(item.id)) return;
+        youtubeSeenMessageIds.add(item.id);
+
+        const snippet = item?.snippet;
+        const author = item?.authorDetails;
+        if (!snippet || !author) return;
+
+        let content = '';
+        let messageType: MessageType = 'chat';
+        let isHighlighted = false;
+
+        if (snippet.type === 'textMessageEvent') {
+            content = snippet.textMessageDetails?.messageText || snippet.displayMessage || '';
+        } else if (snippet.type === 'superChatEvent') {
+            content = snippet.superChatDetails?.userComment || snippet.displayMessage || '';
+            messageType = 'highlighted';
+            isHighlighted = true;
+        } else if (snippet.type === 'superStickerEvent') {
+            content = snippet.displayMessage || 'sent a Super Sticker';
+            messageType = 'highlighted';
+            isHighlighted = true;
+        } else {
+            return;
         }
 
-        if (platform === 'twitch' || platform === 'both') {
-            console.log(`🎮 Kroma - Connecting to #${channel}`);
+        if (!content) return;
+
+        const timestamp = snippet.publishedAt ? Date.parse(snippet.publishedAt) : Date.now();
+        const displayName = author.displayName || 'YouTube';
+        const username = displayName.toLowerCase().replace(/\s+/g, '');
+
+        const parsedContent = parseMessageContent(content, undefined, undefined, 'youtube');
+
+        const newMessage: ChatMessage = {
+            id: item.id,
+            username,
+            displayName,
+            userId: author.channelId || username,
+            content,
+            parsedContent,
+            color: getYouTubeAuthorColor(author),
+            timestamp,
+            type: messageType,
+            isAction: false,
+            isFirstMessage: false,
+            isHighlighted,
+            badges: [],
+            platform: 'youtube',
+            isShared: false,
+        };
+
+        setMessages(prev => {
+            const updated = [...prev, newMessage];
+            if (updated.length > config().maxMessages) {
+                return updated.slice(-config().maxMessages);
+            }
+            return updated;
+        });
+
+        if (config().showNamePaints && author.channelId) {
+            get7TVUserPaint(author.channelId, 'youtube').then(paint => {
+                if (!keepAlive || !paint) return;
+                const { style } = getNamePaintStyles(paint);
+                setMessages(prev => prev.map(m =>
+                    m.id === item.id ? { ...m, paint: style } : m
+                ));
+            });
+        }
+    };
+
+    const pollYouTubeChat = async () => {
+        if (!youtubeLiveChatId || !keepAlive) return;
+        const params = new URLSearchParams();
+        params.set('liveChatId', youtubeLiveChatId);
+        if (youtubeNextPageToken) params.set('pageToken', youtubeNextPageToken);
+
+        try {
+            const res = await fetch(`/api/youtube/messages?${params.toString()}`);
+            if (!res.ok) {
+                setYoutubeConnected(false);
+                return;
+            }
+            const data = await res.json();
+            youtubeNextPageToken = data.nextPageToken || youtubeNextPageToken;
+            const items = Array.isArray(data.items) ? data.items : [];
+            items.forEach(addYouTubeMessage);
+            setYoutubeConnected(true);
+            const delay = typeof data.pollingIntervalMillis === 'number' ? data.pollingIntervalMillis : 5000;
+            youtubePollTimer = window.setTimeout(pollYouTubeChat, Math.max(2000, delay));
+        } catch (e) {
+            console.error("Failed to poll YouTube chat:", e);
+            setYoutubeConnected(false);
+            youtubePollTimer = window.setTimeout(pollYouTubeChat, 7000);
+        }
+    };
+
+    const connectYouTube = async (channel: string) => {
+        console.log(`🔴 Kroma - Connecting to YouTube #${channel}`);
+        const info = await getYouTubeLiveChat(channel);
+        if (!info?.liveChatId) {
+            console.error("Failed to resolve YouTube liveChatId.");
+            return;
+        }
+        youtubeLiveChatId = info.liveChatId;
+        youtubeNextPageToken = null;
+        youtubeSeenMessageIds.clear();
+        if (global7TV.length === 0) {
+            global7TV = await fetch7TVGlobalEmotes();
+        }
+        if (info.channelId) {
+            channel7TVYouTube = await fetch7TVChannelEmotes(info.channelId, 'youtube');
+        }
+        pollYouTubeChat();
+    };
+
+    onMount(async () => {
+        const selectedPlatforms = config().platforms;
+        const hasKick = selectedPlatforms.includes('kick');
+        const hasTwitch = selectedPlatforms.includes('twitch');
+        const hasYouTube = selectedPlatforms.includes('youtube');
+        const twitchChannelName = config().twitchChannel;
+        const kickChannelName = config().kickChannel;
+        const youtubeChannelName = config().youtubeChannel;
+
+        if (hasKick && kickChannelName) {
+            await connectKick(kickChannelName);
+        }
+
+        if (hasTwitch && twitchChannelName) {
+            console.log(`🎮 Kroma - Connecting to #${twitchChannelName}`);
 
             // Pre-cache channel info
-            cacheChannelByUsername(channel);
+            cacheChannelByUsername(twitchChannelName);
 
             // Fetch channel ID
             try {
-                const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
+                const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${twitchChannelName}`);
                 if (res.ok) {
                     const data = await res.json();
                     const id = data[0]?.id;
@@ -1077,7 +1271,7 @@ export default function Chat() {
                 fetchBTTVGlobalEmotes(),
                 currentChannelId ? fetchBTTVChannelEmotes(currentChannelId) : Promise.resolve([]),
                 fetchFFZGlobalEmotes(),
-                fetchFFZChannelEmotes(channel)
+                fetchFFZChannelEmotes(twitchChannelName)
             ]);
 
             global7TV = g7tv;
@@ -1090,10 +1284,10 @@ export default function Chat() {
             console.log(`✨ Loaded emotes - 7TV: ${global7TV.length + channel7TV.length}, BTTV: ${globalBTTV.length + channelBTTV.length}, FFZ: ${globalFFZ.length + channelFFZ.length}`);
 
 
-            if (channel) {
+            if (twitchChannelName) {
                 // Connect to Twitch
                 client = new tmi.Client({
-                    channels: [channel],
+                    channels: [twitchChannelName],
                     connection: {
                         secure: true,
                         reconnect: true,
@@ -1330,12 +1524,12 @@ export default function Chat() {
 
             client.on("connected", () => {
                 setTwitchConnected(true);
-                console.log(`✅ Connected to #${channel}`);
+                console.log(`✅ Connected to #${twitchChannelName}`);
             });
 
             client.on("disconnected", () => {
                 setTwitchConnected(false);
-                console.log(`❌ Disconnected from #${channel}`);
+                console.log(`❌ Disconnected from #${twitchChannelName}`);
             });
 
                 try {
@@ -1346,6 +1540,9 @@ export default function Chat() {
             }
         }
 
+        if (hasYouTube && youtubeChannelName) {
+            await connectYouTube(youtubeChannelName);
+        }
 
     });
 
@@ -1360,6 +1557,9 @@ export default function Chat() {
         if (kickSocket) {
             kickSocket.close();
         }
+        if (youtubePollTimer) {
+            window.clearTimeout(youtubePollTimer);
+        }
     });
 
     return (
@@ -1367,7 +1567,7 @@ export default function Chat() {
             <MySiteTitle>#{params.channel}</MySiteTitle>
 
             {/* Room State Indicators */}
-            <Show when={config().platform !== 'kick' && config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
+            <Show when={config().platforms.includes('twitch') && config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
                 <div class="room-state-bar">
                     <Show when={roomState().slowMode > 0}>
                         <span class="room-state-badge room-state-badge--slow">
@@ -1467,8 +1667,8 @@ export default function Chat() {
                                         <div class="flex gap-1 self-center shrink-0 select-none items-center">
                                             <Show when={config().showPlatformBadge}>
                                                 <img
-                                                    src={PLATFORM_LOGOS[(msg.platform || config().platform) === 'kick' ? 'kick' : 'twitch']}
-                                                    alt={(msg.platform || config().platform) === 'kick' ? 'Kick' : 'Twitch'}
+                                                    src={PLATFORM_LOGOS[((msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'kick') ? 'kick' : (msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'youtube' ? 'youtube' : 'twitch']}
+                                                    alt={((msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'kick') ? 'Kick' : (msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'youtube' ? 'YouTube' : 'Twitch'}
                                                     class="platform-logo"
                                                     loading="lazy"
                                                 />

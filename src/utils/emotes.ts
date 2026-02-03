@@ -25,7 +25,7 @@ export async function fetch7TVGlobalEmotes(): Promise<Emote[]> {
 
 export async function fetch7TVChannelEmotes(
     channelId: string,
-    platform: 'twitch' | 'kick' = 'twitch'
+    platform: 'twitch' | 'kick' | 'youtube' = 'twitch'
 ): Promise<Emote[]> {
     try {
         const res = await fetch(`https://7tv.io/v3/users/${platform}/${channelId}`);

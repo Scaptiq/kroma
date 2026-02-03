@@ -6,3 +6,4 @@ compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
 # Add any environment variables here if needed
+# YOUTUBE_API_KEY = "your_key_here"

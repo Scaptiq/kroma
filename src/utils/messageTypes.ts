@@ -70,7 +70,7 @@ export interface ChatMessage {
         title: string;
         provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'chatterino';
     }>;
-    platform?: 'twitch' | 'kick';
+    platform?: 'twitch' | 'kick' | 'youtube';
     kickBadges?: Array<{
         type: string;
         text?: string;

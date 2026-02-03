@@ -206,7 +206,7 @@ function paintToCSS(paint: any): NamePaint | null {
  */
 export async function get7TVUserPaint(
     userId: string,
-    platform: 'twitch' | 'kick' = 'twitch'
+    platform: 'twitch' | 'kick' | 'youtube' = 'twitch'
 ): Promise<NamePaint | null> {
     const cacheKey = `${platform}:${userId}`;
     const cached = userPaintCache.get(cacheKey);

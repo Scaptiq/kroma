@@ -112,8 +112,8 @@ Badges appear at the top of the overlay when chat restrictions are active:
 ## 🚀 Quick Start
 
 1. Go to **[kroma.scaptiq.live](https://kroma.scaptiq.live)**
-2. Choose **Twitch**, **Kick**, or **Both**
-3. Enter your channel name
+2. Choose Twitch, Kick, YouTube, or Combined
+3. Enter your channel name(s)
 4. Customize settings in **General**, **Visuals**, and **Filters** tabs
 4. **Drag the "Drag to OBS" button** directly into your OBS Sources
 
@@ -127,7 +127,11 @@ For advanced users, you can configure the overlay via URL:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `platform` | string | `twitch` | `twitch`, `kick`, or `both` |
+| `platforms` | string | `twitch` | Comma-separated list: `twitch`, `kick`, `youtube` |
+| `platform` | string | `twitch` | Legacy single platform: `twitch`, `kick`, or `both` |
+| `twitch` | string | | Twitch channel username |
+| `kick` | string | | Kick channel username |
+| `youtube` | string | | YouTube handle (without `@`) |
 | `platformBadge` | boolean | `true` | Show the platform logo before badges |
 | `pronouns` | boolean | `true` | Show pronoun badges (Twitch only) |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
@@ -151,8 +155,11 @@ For advanced users, you can configure the overlay via URL:
 
 ### Example
 ```
-https://kroma.scaptiq.live/v3/chat/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
+https://kroma.scaptiq.live/chat/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
 ```
+
+### YouTube Setup
+- Set `YOUTUBE_API_KEY` on the server (Cloudflare Pages env or local `.env`) to enable live chat polling.
 
 ---
 
