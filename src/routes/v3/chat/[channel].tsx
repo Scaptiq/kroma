@@ -1601,6 +1601,8 @@ export default function Chat() {
             badge?.image ||
             badge?.src ||
             badge?.icon ||
+            badge?.staticAssetUrl ||
+            badge?.animatedAssetUrl ||
             assetVariants?.static2x ||
             assetVariants?.static1x ||
             assetVariants?.static4x ||
