@@ -198,6 +198,9 @@ export default function Chat() {
         const youtubeChannel = (searchParams.youtube || (platforms.includes('youtube') ? fallbackChannel : '')).toLowerCase();
         const veloraChannel = (searchParams.velora || (platforms.includes('velora') ? fallbackChannel : '')).toLowerCase();
 
+        const fontFamilyRaw = searchParams.font || 'Segoe UI';
+        const fontFamily = fontFamilyRaw.replace(/\+/g, ' ');
+
         return {
             ...DEFAULT_CONFIG,
             platforms: platforms as ChatPlatform[],
@@ -218,7 +221,7 @@ export default function Chat() {
             showReplies: searchParams.replies !== 'false' && hasTwitch,
             maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
             fontSize: parseInt(searchParams.fontSize || '16') || 16,
-            fontFamily: searchParams.font || 'Segoe UI',
+            fontFamily,
             fadeOutMessages: searchParams.fadeOut === 'true',
             fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
             emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
