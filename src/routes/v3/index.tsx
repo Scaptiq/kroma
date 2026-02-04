@@ -610,32 +610,6 @@ export default function ChatSetup() {
                                             </Stack>
                                         </Show>
 
-                                        <Show when={hasPlatform('kick')}>
-                                            <Alert
-                                                severity="info"
-                                                sx={{
-                                                    mt: 2,
-                                                    bgcolor: 'rgba(34, 197, 94, 0.1)',
-                                                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                                                    color: '#bbf7d0'
-                                                }}
-                                            >
-                                                Kick mode is live. Some Twitch-only features are hidden in Kick mode.
-                                            </Alert>
-                                        </Show>
-                                        <Show when={hasPlatform('youtube')}>
-                                            <Alert
-                                                severity="info"
-                                                sx={{
-                                                    mt: 2,
-                                                    bgcolor: 'rgba(239, 68, 68, 0.12)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                                                    color: '#fecaca'
-                                                }}
-                                            >
-                                                YouTube chat is live. Super Chats and 7TV emotes/paints are supported.
-                                            </Alert>
-                                        </Show>
                                         <Show when={hasPlatform('velora')}>
                                             <Alert
                                                 severity="warning"
