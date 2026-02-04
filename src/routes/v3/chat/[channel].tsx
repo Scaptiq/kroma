@@ -2356,15 +2356,13 @@ export default function Chat() {
                     "--chat-font-size": `${config().fontSize}px`,
                     "font-family": `"${config().fontFamily}", "Segoe UI", "Inter", sans-serif`,
                     "--emote-scale": config().emoteScale,
-                    "--fade-delay": `${config().fadeOutDelay / 1000}s`
+                    "--fade-delay": `${config().fadeOutDelay / 1000}s`,
+                    "--message-gap": `${config().messageGap}px`
                 }}
             >
                 <ul
                     ref={messageContainer}
                     class="chat-container w-full"
-                    style={{
-                        gap: `${config().messageGap}px`
-                    }}
                 >
                     <For each={[...messages()].reverse()}>
                         {(msg, index) => (
