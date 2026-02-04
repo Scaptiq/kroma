@@ -3,7 +3,7 @@
 <div align="center">
   <img src="public/kroma-logo.png" width="120" />
   <h1>Kroma Chat</h1>
-  <p><strong>The most inclusive Twitch, Kick, and YouTube chat overlay.</strong></p>
+  <p><strong>The most inclusive Twitch, Kick, YouTube, and Velora chat overlay.</strong></p>
   <p>Built for streamers who care about identity, accessibility, and aesthetics.</p>
 </div>
 
@@ -11,11 +11,11 @@
 
 ## 💡 What is Kroma?
 
-**Kroma** is a premium browser-based chat overlay for OBS that displays your **Twitch**, **Kick**, or **YouTube** chat with a focus on **inclusivity** and **modern design**. 
+**Kroma** is a premium browser-based chat overlay for OBS that displays your **Twitch**, **Kick**, **YouTube**, or **Velora** chat with a focus on **inclusivity** and **modern design**. 
 
 - 🏳️‍🌈 **Identity First**: Fully integrated pronouns (Alejo.io) and pride-themed badges.
 - 🎨 **Beautiful Aesthetics**: Supports 7TV name paints, custom gradients, and frosted-glass UI.
-- 🚀 **Multi-Platform**: Combine Twitch, Kick, and YouTube into a single, seamless overlay.
+- 🚀 **Multi-Platform**: Combine Twitch, Kick, YouTube, and Velora into a single, seamless overlay.
 - 👥 **Shared Chat**: The only overlay with native support for Twitch "Stream Together".
 - 🛠️ **Configurator**: Powerful [setup page](https://kroma.scaptiq.live/v3/) to customize everything without code.
 
@@ -63,6 +63,7 @@
 | **Shared Chat** | Native support for Twitch "Stream Together" (Twitch only) |
 | **7TV / BTTV / FFZ** | Full emote support (Twitch/Kick/YouTube - 7TV everywhere!) |
 | **Name Paints** | Renders 7TV gradient usernames (Twitch/Kick/YouTube) |
+| **Velora Emotes** | Native Velora emotes + on-demand resolve |
 | **Reply Threading** | Shows reply context for threaded conversations (Twitch only) |
 | **Bits & Cheers** | Displays cheer emotes and bit amounts (Twitch only) |
 | **Platform Badge** | Optional icons to distinguish Twitch, Kick, and YouTube messages |
@@ -111,7 +112,7 @@ Badges appear at the top of the overlay when chat restrictions are active:
 ## 🚀 Quick Start
 
 1. Go to **[kroma.scaptiq.live](https://kroma.scaptiq.live)**
-2. Choose Twitch, Kick, YouTube, or Combined
+2. Choose Twitch, Kick, YouTube, Velora, or Combined
 3. Enter your channel name(s)
 4. Customize settings in **General**, **Visuals**, and **Filters** tabs
 4. **Drag the "Drag to OBS" button** directly into your OBS Sources
@@ -126,10 +127,11 @@ For advanced users, you can configure the overlay via URL:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `platforms` | string | `twitch` | Comma-separated: `twitch`, `kick`, `youtube` |
+| `platforms` | string | `twitch` | Comma-separated: `twitch`, `kick`, `youtube`, `velora` |
 | `twitch` | string | | Twitch channel name |
 | `kick` | string | | Kick channel name |
 | `youtube` | string | | YouTube handle (without `@`) |
+| `velora` | string | | Velora username |
 | `platformBadge` | boolean | `true` | Show platform icon before badges |
 | `pronouns` | boolean | `true` | Show pronoun badges (Twitch only) |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
@@ -159,6 +161,10 @@ https://kroma.scaptiq.live/chat/yourChannel?pridePronouns=true&fontSize=20&font=
 ### YouTube Setup
 - Set `YOUTUBE_API_KEY` on the server (Cloudflare Pages env or local `.env`) to enable live chat polling.
 - YouTube messages use randomized name colors and support 7TV emotes + paints, plus YouTube emojis (including custom).
+
+### Velora Setup (Early Testing)
+- Velora chat uses public endpoints for history + emotes and may be unstable while in early testing.
+- Optional: set `VELORA_ACCESS_TOKEN` on the server if the Velora API requires auth for user search or emotes.
 
 ---
 
