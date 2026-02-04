@@ -34,6 +34,13 @@ body {
     /* Allows OBS transparency */
 }
 
+html,
+body,
+#root,
+#app {
+    background-color: transparent !important;
+}
+
 /* Chat Container */
 .chat-container {
     width: 100%;
