@@ -1,1 +1,0 @@
-export { GET } from "../catalog";
