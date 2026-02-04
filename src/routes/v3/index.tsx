@@ -115,6 +115,7 @@ export default function ChatSetup() {
     const [maxMessages, setMaxMessages] = createSignal(50);
     const [fontSize, setFontSize] = createSignal(16);
     const [emoteScale, setEmoteScale] = createSignal(1.0);
+    const [messageGap, setMessageGap] = createSignal(8);
     const [fadeOutMessages, setFadeOutMessages] = createSignal(false);
     const [fadeOutDelay, setFadeOutDelay] = createSignal(30);
     const [blockedUsers, setBlockedUsers] = createSignal("");
@@ -256,6 +257,7 @@ export default function ChatSetup() {
         if (font !== 'Segoe UI') params.set('font', font);
         if (fontSize() !== 16) params.set('fontSize', String(fontSize()));
         if (emoteScale() !== 1.0) params.set('emoteScale', String(emoteScale()));
+        if (messageGap() !== 8) params.set('gap', String(messageGap()));
         if (fadeOutMessages()) {
             params.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) params.set('fadeDelay', String(fadeOutDelay() * 1000));
@@ -300,6 +302,7 @@ export default function ChatSetup() {
         if (maxMessages() !== 50) url.searchParams.set('maxMessages', String(maxMessages()));
         if (fontSize() !== 16) url.searchParams.set('fontSize', String(fontSize()));
         if (emoteScale() !== 1.0) url.searchParams.set('emoteScale', String(emoteScale()));
+        if (messageGap() !== 8) url.searchParams.set('gap', String(messageGap()));
         if (fadeOutMessages()) {
             url.searchParams.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) url.searchParams.set('fadeDelay', String(fadeOutDelay() * 1000));
@@ -775,6 +778,18 @@ export default function ChatSetup() {
                                                     <Box>
                                                         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Elements</Typography>
                                                         <Stack spacing={2}>
+                                                            <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
+                                                                    Global
+                                                                </Typography>
+                                                                <Box sx={{ pt: 1 }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                                        <Typography variant="body2">Message Spacing</Typography>
+                                                                        <Typography variant="caption" sx={{ bgcolor: 'rgba(255,255,255,0.1)', px: 1, py: 0.5, borderRadius: 1 }}>{messageGap()}px</Typography>
+                                                                    </Box>
+                                                                    <GradientSlider min={0} max={24} step={1} value={messageGap()} onChange={setMessageGap} />
+                                                                </Box>
+                                                            </Box>
                                                             <For each={sectionPlatforms()}>
                                                                 {(platform) => (
                                                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>

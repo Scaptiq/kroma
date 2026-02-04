@@ -62,6 +62,7 @@ interface ChatConfig {
     blockedUsers: string[];
     customBots: string[];
     showRoomState: boolean;
+    messageGap: number;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -91,6 +92,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     blockedUsers: [],
     customBots: [],
     showRoomState: false,
+    messageGap: 8,
 };
 
 // Known bot usernames
@@ -227,6 +229,7 @@ export default function Chat() {
             fadeOutMessages: searchParams.fadeOut === 'true',
             fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
             emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
+            messageGap: parseInt(searchParams.gap || '8') || 8,
             blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
             customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
             showRoomState: searchParams.roomState === 'true' && hasTwitch,
@@ -2359,6 +2362,9 @@ export default function Chat() {
                 <ul
                     ref={messageContainer}
                     class="chat-container w-full"
+                    style={{
+                        gap: `${config().messageGap}px`
+                    }}
                 >
                     <For each={[...messages()].reverse()}>
                         {(msg, index) => (
