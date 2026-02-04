@@ -2363,6 +2363,10 @@ export default function Chat() {
                 <ul
                     ref={messageContainer}
                     class="chat-container w-full"
+                    style={{
+                        gap: `${config().messageGap}px`,
+                        "--message-gap": `${config().messageGap}px`
+                    }}
                 >
                     <For each={[...messages()].reverse()}>
                         {(msg, index) => (
