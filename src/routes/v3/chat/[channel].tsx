@@ -161,6 +161,7 @@ export default function Chat() {
     let veloraStreamId: string | null = null;
     let veloraEmoteMap = new Map<string, string>();
     let veloraResolveInFlight = new Set<string>();
+    let veloraBadgeMap = new Map<string, { url: string; title?: string }>();
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -1571,6 +1572,84 @@ export default function Chat() {
         }
     };
 
+    const extractVeloraBadgeList = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data.badges)) return data.badges;
+        if (Array.isArray(data.items)) return data.items;
+        if (Array.isArray(data.data)) return data.data;
+        if (Array.isArray(data.results)) return data.results;
+        return [];
+    };
+
+    const loadVeloraBadgeCatalog = async () => {
+        try {
+            const res = await fetch(`/api/velora/badges/catalog`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = extractVeloraBadgeList(data);
+            list.forEach((badge: any) => {
+                const key = String(badge?.key || badge?.slug || badge?.id || badge?.name || badge?.code || "").toLowerCase();
+                if (!key) return;
+                const assetVariants = badge?.assetVariants || badge?.assets || badge?.variants;
+                const variantUrl =
+                    assetVariants?.static2x ||
+                    assetVariants?.static1x ||
+                    assetVariants?.static4x ||
+                    assetVariants?.animated2x ||
+                    assetVariants?.animated1x ||
+                    assetVariants?.animated4x;
+                const url =
+                    badge?.url ||
+                    badge?.imageUrl ||
+                    badge?.image_url ||
+                    badge?.image ||
+                    badge?.src ||
+                    badge?.icon ||
+                    variantUrl;
+                if (url) {
+                    veloraBadgeMap.set(key, { url: String(url), title: badge?.title || badge?.label || badge?.name });
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load Velora badge catalog:", e);
+        }
+    };
+
+    const loadVeloraChannelBadges = async (username: string) => {
+        try {
+            const res = await fetch(`/api/velora/badges/channel?username=${encodeURIComponent(username)}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = extractVeloraBadgeList(data);
+            list.forEach((badge: any) => {
+                const key = String(badge?.key || badge?.slug || badge?.id || badge?.name || badge?.code || "").toLowerCase();
+                if (!key) return;
+                const assetVariants = badge?.assetVariants || badge?.assets || badge?.variants;
+                const variantUrl =
+                    assetVariants?.static2x ||
+                    assetVariants?.static1x ||
+                    assetVariants?.static4x ||
+                    assetVariants?.animated2x ||
+                    assetVariants?.animated1x ||
+                    assetVariants?.animated4x;
+                const url =
+                    badge?.url ||
+                    badge?.imageUrl ||
+                    badge?.image_url ||
+                    badge?.image ||
+                    badge?.src ||
+                    badge?.icon ||
+                    variantUrl;
+                if (url) {
+                    veloraBadgeMap.set(key, { url: String(url), title: badge?.title || badge?.label || badge?.name });
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load Velora channel badges:", e);
+        }
+    };
+
     const loadVeloraEmotes = async (channelId: string) => {
         try {
             const res = await fetch(`/api/velora/emotes?channelId=${encodeURIComponent(channelId)}`);
@@ -1714,10 +1793,20 @@ export default function Chat() {
             entries.forEach((badge: any, index: number) => {
                 if (!badge) return;
                 if (typeof badge === "string") {
+                    const lookup = veloraBadgeMap.get(badge.toLowerCase());
+                    if (lookup?.url) {
+                        badges.push({
+                            id: `velora-${badge}-${index}`,
+                            title: lookup.title || badge,
+                            url: lookup.url,
+                            provider: "velora"
+                        });
+                        return;
+                    }
                     badges.push({
                         id: `velora-${badge}-${index}`,
                         title: badge,
-                        url: createTextBadge(badge.slice(0, 2)),
+                        url: createTextBadge(badge),
                         provider: "velora"
                     });
                     return;
@@ -1771,6 +1860,43 @@ export default function Chat() {
             [];
 
         const veloraBadges = extractVeloraBadges(badgeSource);
+        const roleSource = item?.userRoles || item?.roles || item?.role;
+        const roleBadges = extractVeloraBadges(
+            Array.isArray(roleSource) ? roleSource : roleSource ? [roleSource] : []
+        );
+        const flagBadges: Badge[] = [];
+        if (item?.isSubscriber) {
+            flagBadges.push({
+                id: `velora-subscriber-flag`,
+                title: "Subscriber",
+                url: createTextBadge("SU"),
+                provider: "velora"
+            });
+        }
+        if (item?.isModerator) {
+            flagBadges.push({
+                id: `velora-moderator-flag`,
+                title: "Moderator",
+                url: createTextBadge("MOD"),
+                provider: "velora"
+            });
+        }
+        if (item?.isVip) {
+            flagBadges.push({
+                id: `velora-vip-flag`,
+                title: "VIP",
+                url: createTextBadge("VIP"),
+                provider: "velora"
+            });
+        }
+        if (item?.subscriptionBadge?.staticAssetUrl) {
+            flagBadges.unshift({
+                id: `velora-subscription-badge`,
+                title: item?.subscriptionBadge?.label || "Subscriber",
+                url: String(item.subscriptionBadge.staticAssetUrl),
+                provider: "velora"
+            });
+        }
 
         const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
 
@@ -1782,6 +1908,7 @@ export default function Chat() {
                 ? item.effect_color
                 : undefined;
 
+        const isSystem = item?.isSystem === true || item?.role === "system";
         const newMessage: ChatMessage = {
             id: messageKey,
             username,
@@ -1791,11 +1918,11 @@ export default function Chat() {
             parsedContent,
             color: generateColor(username),
             timestamp,
-            type: "chat",
+            type: isSystem ? "system" : "chat",
             isAction: false,
             isFirstMessage: false,
             isHighlighted: false,
-            badges: veloraBadges,
+            badges: [...veloraBadges, ...roleBadges, ...flagBadges],
             platform: "velora",
             isShared: false,
             effect,
@@ -1881,7 +2008,11 @@ export default function Chat() {
         }
         veloraStreamId = streamId ? String(streamId) : null;
         veloraSeenMessageIds.clear();
-        await loadVeloraEmotes(veloraChannelId);
+        await Promise.all([
+            loadVeloraEmotes(veloraChannelId),
+            loadVeloraBadgeCatalog(),
+            loadVeloraChannelBadges(username)
+        ]);
         pollVeloraChat();
     };
 
