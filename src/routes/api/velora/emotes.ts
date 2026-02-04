@@ -1,4 +1,4 @@
-import { json } from "solid-start";
+import { json, type APIEvent } from "solid-start";
 
 const VELORA_API_BASE = "https://api.velora.tv";
 
@@ -35,15 +35,30 @@ const normalizeEmote = (emote: any) => {
     return { code: String(code), url: String(url) };
 };
 
-export async function GET({ request }: { request: Request }) {
-    const url = new URL(request.url);
+const getAccessToken = (event?: APIEvent) =>
+    (event as any)?.env?.VELORA_ACCESS_TOKEN || process.env.VELORA_ACCESS_TOKEN || "";
+
+const buildHeaders = (event?: APIEvent) => {
+    const headers: Record<string, string> = {
+        Accept: "application/json",
+        "User-Agent": "kroma-chat",
+    };
+    const token = getAccessToken(event);
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+    return headers;
+};
+
+export async function GET(event: APIEvent) {
+    const url = new URL(event.request.url);
     const channelId = url.searchParams.get("channelId");
 
     try {
         const [globalRes, channelRes] = await Promise.all([
-            fetch(`${VELORA_API_BASE}/api/emotes/global`),
+            fetch(`${VELORA_API_BASE}/api/emotes/global`, { headers: buildHeaders(event) }),
             channelId
-                ? fetch(`${VELORA_API_BASE}/api/emotes/channel/${encodeURIComponent(channelId)}`)
+                ? fetch(`${VELORA_API_BASE}/api/emotes/channel/${encodeURIComponent(channelId)}`, { headers: buildHeaders(event) })
                 : Promise.resolve(null),
         ]);
 
