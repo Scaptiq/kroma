@@ -1623,7 +1623,23 @@ export default function Chat() {
             const list = extractVeloraEmoteList(data);
             list.forEach((item: any) => {
                 const code = item?.code || item?.name || item?.text || item?.shortcode || item?.shortCode || item?.id;
-                const url = item?.url || item?.imageUrl || item?.image_url || item?.image || item?.src || item?.images?.full || item?.images?.original;
+                const assetVariants = item?.assetVariants || item?.assets || item?.variants;
+                const variantUrl =
+                    assetVariants?.animated2x ||
+                    assetVariants?.animated1x ||
+                    assetVariants?.animated4x ||
+                    assetVariants?.static2x ||
+                    assetVariants?.static1x ||
+                    assetVariants?.static4x;
+                const url =
+                    item?.url ||
+                    item?.imageUrl ||
+                    item?.image_url ||
+                    item?.image ||
+                    item?.src ||
+                    item?.images?.full ||
+                    item?.images?.original ||
+                    variantUrl;
                 if (code && url) {
                     veloraEmoteMap.set(String(code), String(url));
                 }
