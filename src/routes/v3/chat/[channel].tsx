@@ -1606,6 +1606,20 @@ export default function Chat() {
             const res = await fetch(`/api/velora/emotes/resolve?codes=${encodeURIComponent(pending.join(','))}`);
             if (!res.ok) return;
             const data = await res.json();
+            if (data && typeof data === "object" && !Array.isArray(data)) {
+                Object.entries(data).forEach(([key, value]) => {
+                    if (typeof value === "string") {
+                        veloraEmoteMap.set(String(key), value);
+                        return;
+                    }
+                    if (value && typeof value === "object") {
+                        const url = (value as any).url || (value as any).imageUrl || (value as any).image_url || (value as any).image || (value as any).src;
+                        if (url) {
+                            veloraEmoteMap.set(String(key), String(url));
+                        }
+                    }
+                });
+            }
             const list = extractVeloraEmoteList(data);
             list.forEach((item: any) => {
                 const code = item?.code || item?.name || item?.text || item?.shortcode || item?.shortCode || item?.id;
@@ -1702,7 +1716,8 @@ export default function Chat() {
 
         if (config().showEmotes) {
             const tokens = content.split(/\s+/).map(t => t.trim()).filter(Boolean);
-            const candidates = tokens.filter(token => !token.startsWith("@") && !token.startsWith("http") && token.length <= 32);
+            const normalized = tokens.map(token => token.replace(/^[^\w]+|[^\w]+$/g, ""));
+            const candidates = normalized.filter(token => token && !token.startsWith("@") && !token.startsWith("http") && token.length <= 32);
             const missing = candidates.filter(token => !veloraEmoteMap.has(token));
             if (missing.length > 0) {
                 resolveVeloraEmotes(missing).then(() => {
