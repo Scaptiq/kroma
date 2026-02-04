@@ -8,6 +8,7 @@ const normalizeUsername = (input: string) =>
 const extractUserList = (data: any): any[] => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
+    if (data?.id || data?.userId || data?.username) return [data];
     if (Array.isArray(data.items)) return data.items;
     if (Array.isArray(data.results)) return data.results;
     if (Array.isArray(data.data)) return data.data;
@@ -65,7 +66,7 @@ export async function GET(event: APIEvent) {
         const headers = buildHeaders(event);
         const queries = [
             `${VELORA_API_BASE}/api/search/users?q=${encodeURIComponent(username)}`,
-            `${VELORA_API_BASE}/api/search?q=${encodeURIComponent(username)}&type=users`,
+            `${VELORA_API_BASE}/api/users/${encodeURIComponent(username)}`,
         ];
 
         let lastError: { status: number; body: any } | null = null;

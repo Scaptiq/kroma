@@ -1685,10 +1685,11 @@ export default function Chat() {
         const resolved = await resolveVeloraUser(username);
         const channelId = resolved?.userId || resolved?.raw?.id;
         if (!channelId) {
-            console.error("Failed to resolve Velora channel ID.");
-            return;
+            console.warn("Failed to resolve Velora channel ID, falling back to username.");
+            veloraChannelId = username;
+        } else {
+            veloraChannelId = String(channelId);
         }
-        veloraChannelId = String(channelId);
         veloraSeenMessageIds.clear();
         await loadVeloraEmotes(veloraChannelId);
         pollVeloraChat();
