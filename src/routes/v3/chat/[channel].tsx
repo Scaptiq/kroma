@@ -158,6 +158,7 @@ export default function Chat() {
     let veloraPollTimer: number | undefined;
     let veloraSeenMessageIds = new Set<string>();
     let veloraChannelId: string | null = null;
+    let veloraStreamId: string | null = null;
     let veloraEmoteMap = new Map<string, string>();
     let veloraResolveInFlight = new Set<string>();
     let messageContainer: HTMLUListElement | undefined;
@@ -1831,14 +1832,23 @@ export default function Chat() {
         if (!veloraChannelId || !keepAlive) return;
 
         try {
+            const responses: any[] = [];
             const res = await fetch(`/api/velora/history?channelId=${encodeURIComponent(veloraChannelId)}`);
-            if (!res.ok) {
+            if (res.ok) {
+                responses.push(await res.json());
+            }
+            if (veloraStreamId && veloraStreamId !== veloraChannelId) {
+                const streamRes = await fetch(`/api/velora/history?channelId=${encodeURIComponent(veloraStreamId)}`);
+                if (streamRes.ok) {
+                    responses.push(await streamRes.json());
+                }
+            }
+            if (responses.length === 0) {
                 setVeloraConnected(false);
                 veloraPollTimer = window.setTimeout(pollVeloraChat, 3000);
                 return;
             }
-            const data = await res.json();
-            const items = extractVeloraMessages(data);
+            const items = responses.flatMap(extractVeloraMessages);
             items
                 .map((item: any) => {
                     const raw = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
@@ -1862,12 +1872,14 @@ export default function Chat() {
         console.log(`🟦 Kroma - Connecting to Velora #${username}`);
         const resolved = await resolveVeloraUser(username);
         const channelId = resolved?.userId || resolved?.raw?.id;
+        const streamId = resolved?.raw?.streamInfo?.id;
         if (!channelId) {
             console.warn("Failed to resolve Velora channel ID, falling back to username.");
             veloraChannelId = username;
         } else {
             veloraChannelId = String(channelId);
         }
+        veloraStreamId = streamId ? String(streamId) : null;
         veloraSeenMessageIds.clear();
         await loadVeloraEmotes(veloraChannelId);
         pollVeloraChat();
