@@ -33,13 +33,14 @@ import {
 } from "~/utils/messageTypes";
 
 // Configuration interface
-type ChatPlatform = 'twitch' | 'kick' | 'youtube';
+type ChatPlatform = 'twitch' | 'kick' | 'youtube' | 'velora';
 
 interface ChatConfig {
     platforms: ChatPlatform[];
     twitchChannel: string;
     kickChannel: string;
     youtubeChannel: string;
+    veloraChannel: string;
     showPlatformBadge: boolean;
     showPronouns: boolean;
     pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
@@ -68,6 +69,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     twitchChannel: '',
     kickChannel: '',
     youtubeChannel: '',
+    veloraChannel: '',
     showPlatformBadge: true,
     showPronouns: true,
     pridePronouns: false,  // Default to standard purple badges
@@ -117,6 +119,7 @@ export default function Chat() {
     const [twitchConnected, setTwitchConnected] = createSignal(false);
     const [kickConnected, setKickConnected] = createSignal(false);
     const [youtubeConnected, setYoutubeConnected] = createSignal(false);
+    const [veloraConnected, setVeloraConnected] = createSignal(false);
     const [channelId, setChannelId] = createSignal<string | null>(null);
 
     // Room State (slow mode, emote-only, etc.)
@@ -152,6 +155,10 @@ export default function Chat() {
     let youtubeSeenMessageIds = new Set<string>();
     let youtubeEmojiMap: Map<string, string> | null = null;
     let youtubeEmojiMapPromise: Promise<Map<string, string>> | null = null;
+    let veloraPollTimer: number | undefined;
+    let veloraSeenMessageIds = new Set<string>();
+    let veloraChannelId: string | null = null;
+    let veloraEmoteMap = new Map<string, string>();
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -178,14 +185,17 @@ export default function Chat() {
                     ? ['kick']
                     : legacy === 'youtube'
                         ? ['youtube']
+                        : legacy === 'velora'
+                            ? ['velora']
                         : ['twitch'];
-        const platforms = rawPlatforms.filter(p => p === 'twitch' || p === 'kick' || p === 'youtube');
+        const platforms = rawPlatforms.filter(p => p === 'twitch' || p === 'kick' || p === 'youtube' || p === 'velora');
         if (platforms.length === 0) platforms.push('twitch');
         const hasTwitch = platforms.includes('twitch');
         const fallbackChannel = (params.channel || '').toLowerCase();
         const twitchChannel = (searchParams.twitch || (platforms.includes('twitch') ? fallbackChannel : '')).toLowerCase();
         const kickChannel = (searchParams.kick || (platforms.includes('kick') ? fallbackChannel : '')).toLowerCase();
         const youtubeChannel = (searchParams.youtube || (platforms.includes('youtube') ? fallbackChannel : '')).toLowerCase();
+        const veloraChannel = (searchParams.velora || (platforms.includes('velora') ? fallbackChannel : '')).toLowerCase();
 
         return {
             ...DEFAULT_CONFIG,
@@ -193,6 +203,7 @@ export default function Chat() {
             twitchChannel,
             kickChannel,
             youtubeChannel,
+            veloraChannel,
             showPlatformBadge: searchParams.platformBadge !== 'false',
             showPronouns: searchParams.pronouns !== 'false' && hasTwitch,
             pridePronouns: searchParams.pridePronouns === 'true',
@@ -221,6 +232,7 @@ export default function Chat() {
         if (platforms.includes('twitch') && twitchConnected()) return true;
         if (platforms.includes('kick') && kickConnected()) return true;
         if (platforms.includes('youtube') && youtubeConnected()) return true;
+        if (platforms.includes('velora') && veloraConnected()) return true;
         return false;
     });
 
@@ -685,6 +697,95 @@ export default function Chat() {
         return finalParts.filter(p => p !== "");
     };
 
+    const getVeloraEmoteUrl = (emote: any): string | undefined => {
+        const directUrl = emote?.url || emote?.imageUrl || emote?.image_url || emote?.image || emote?.src;
+        if (typeof directUrl === "string" && directUrl.length) return directUrl;
+
+        const images = emote?.images;
+        if (images) {
+            const candidates = [
+                images.fullsize,
+                images.full,
+                images.original,
+                images.large,
+                images.medium,
+                images.small,
+                images?.url,
+            ];
+            for (const candidate of candidates) {
+                if (typeof candidate === "string" && candidate.length) return candidate;
+            }
+        }
+
+        return undefined;
+    };
+
+    const parseVeloraMessageContent = (text: string, emotes?: any[]): ParsedPart[] => {
+        if (Array.isArray(emotes) && emotes.length > 0) {
+            const positioned = emotes
+                .map((emote) => {
+                    const start = emote?.start ?? emote?.start_index ?? emote?.startIndex ?? emote?.positions?.[0];
+                    const end = emote?.end ?? emote?.end_index ?? emote?.endIndex ?? emote?.positions?.[1];
+                    if (typeof start !== "number" || typeof end !== "number") return null;
+                    const url = getVeloraEmoteUrl(emote);
+                    if (!url) return null;
+                    return {
+                        start,
+                        end,
+                        url,
+                        name: String(emote?.code || emote?.name || emote?.id || "emote")
+                    };
+                })
+                .filter(Boolean) as Array<{ start: number; end: number; url: string; name: string }>;
+
+            if (positioned.length > 0) {
+                positioned.sort((a, b) => a.start - b.start);
+                const parts: ParsedPart[] = [];
+                let cursor = 0;
+                for (const emote of positioned) {
+                    if (emote.start > cursor) {
+                        parts.push(text.slice(cursor, emote.start));
+                    }
+                    parts.push({
+                        type: "emote",
+                        url: emote.url,
+                        name: emote.name,
+                        provider: "velora"
+                    });
+                    cursor = emote.end + 1;
+                }
+                if (cursor < text.length) {
+                    parts.push(text.slice(cursor));
+                }
+                return parts.filter(p => p !== "");
+            }
+        }
+
+        const parts: ParsedPart[] = [];
+        const words = text.split(/(\s+)/);
+        for (const word of words) {
+            const trimmed = word.trim();
+            if (!trimmed) {
+                parts.push(word);
+                continue;
+            }
+            if (config().showEmotes && veloraEmoteMap.size > 0) {
+                const url = veloraEmoteMap.get(trimmed);
+                if (url) {
+                    parts.push({
+                        type: "emote",
+                        url,
+                        name: trimmed,
+                        provider: "velora"
+                    });
+                    continue;
+                }
+            }
+            parts.push(word);
+        }
+        return parts.filter(p => p !== "");
+    };
+
     /**
      * Get badges for a user
      */
@@ -957,10 +1058,11 @@ export default function Chat() {
         return KICK_GLOBAL_BADGES[normalized];
     };
 
-    const PLATFORM_LOGOS: Record<"twitch" | "kick" | "youtube", string> = {
+    const PLATFORM_LOGOS: Record<ChatPlatform, string> = {
         twitch: "https://cdn.brandfetch.io/idIwZCwD2f/theme/dark/symbol.svg?c=1bxid64Mup7aczewSAYMX&t=1668070397594",
         kick: "data:image/svg+xml;utf8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20stroke-linejoin%3D%22round%22%20stroke-miterlimit%3D%222%22%3E%3Cpath%20d%3D%22M37%20.036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z%22%20fill%3D%22%2353fc18%22/%3E%3C/svg%3E",
         youtube: "https://www.vectorlogo.zone/logos/youtube/youtube-icon.svg",
+        velora: "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%230f172a%22/%3E%3Cpath%20d%3D%22M14%2018%20L30%2046%20L34%2046%20L50%2018%22%20stroke%3D%22%2338bdf8%22%20stroke-width%3D%228%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22/%3E%3C/svg%3E",
     };
 
     const handleKickMessage = (payload: any) => {
@@ -1140,6 +1242,22 @@ export default function Chat() {
                 ));
             });
         }
+    };
+
+    /**
+     * Generate consistent color for username
+     */
+    const getPlatformLabel = (platform: ChatPlatform) => {
+        if (platform === 'kick') return 'Kick';
+        if (platform === 'youtube') return 'YouTube';
+        if (platform === 'velora') return 'Velora';
+        return 'Twitch';
+    };
+
+    const getMessagePlatform = (msg: ChatMessage): ChatPlatform => {
+        if (msg.platform) return msg.platform as ChatPlatform;
+        if (config().platforms.length === 1) return config().platforms[0];
+        return 'twitch';
     };
 
     /**
@@ -1432,17 +1550,167 @@ export default function Chat() {
         pollYouTubeChat();
     };
 
+    const resolveVeloraUser = async (username: string) => {
+        try {
+            const res = await fetch(`/api/velora/resolve?username=${encodeURIComponent(username)}`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            console.error("Failed to resolve Velora user:", e);
+            return null;
+        }
+    };
+
+    const loadVeloraEmotes = async (channelId: string) => {
+        try {
+            const res = await fetch(`/api/velora/emotes?channelId=${encodeURIComponent(channelId)}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const map = new Map<string, string>();
+            const globalEmotes = Array.isArray(data?.global) ? data.global : [];
+            const channelEmotes = Array.isArray(data?.channel) ? data.channel : [];
+            [...globalEmotes, ...channelEmotes].forEach((emote: any) => {
+                if (!emote?.code || !emote?.url) return;
+                map.set(String(emote.code), String(emote.url));
+            });
+            veloraEmoteMap = map;
+        } catch (e) {
+            console.error("Failed to load Velora emotes:", e);
+        }
+    };
+
+    const extractVeloraMessages = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data.messages)) return data.messages;
+        if (Array.isArray(data.items)) return data.items;
+        if (Array.isArray(data.data)) return data.data;
+        if (Array.isArray(data.results)) return data.results;
+        return [];
+    };
+
+    const addVeloraMessage = (item: any) => {
+        const messageId = item?.id || item?.messageId || item?.message_id || item?._id || item?.uuid;
+        if (!messageId) return;
+        const messageKey = String(messageId);
+        if (veloraSeenMessageIds.has(messageKey)) return;
+        veloraSeenMessageIds.add(messageKey);
+
+        const user = item?.user || item?.author || item?.sender || {};
+        const username = String(user?.username || user?.handle || user?.slug || item?.username || "unknown");
+        const displayName = String(user?.displayName || user?.display_name || item?.displayName || username);
+        const userId = String(user?.id || user?.userId || item?.userId || username);
+        const content = String(item?.message || item?.content || item?.text || "");
+        if (!content) return;
+
+        const rawTimestamp = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
+        const timestamp = rawTimestamp
+            ? (() => {
+                const numeric = Number(rawTimestamp);
+                if (!Number.isNaN(numeric)) {
+                    return numeric > 10_000_000_000 ? numeric : numeric * 1000;
+                }
+                const parsed = new Date(String(rawTimestamp)).getTime();
+                return Number.isNaN(parsed) ? Date.now() : parsed;
+            })()
+            : Date.now();
+
+        if (config().hideBots && KNOWN_BOTS.has(username.toLowerCase())) return;
+        if (config().blockedUsers.includes(username.toLowerCase())) return;
+        if (config().customBots.includes(username.toLowerCase())) return;
+        if (config().hideCommands && content.startsWith("!")) return;
+
+        const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
+
+        const newMessage: ChatMessage = {
+            id: messageKey,
+            username,
+            displayName,
+            userId,
+            content,
+            parsedContent,
+            color: item?.color || user?.color || generateColor(username),
+            timestamp,
+            type: "chat",
+            isAction: false,
+            isFirstMessage: false,
+            isHighlighted: false,
+            badges: [],
+            platform: "velora",
+            isShared: false,
+        };
+
+        setMessages(prev => {
+            const updated = [...prev, newMessage];
+            if (updated.length > config().maxMessages) {
+                return updated.slice(-config().maxMessages);
+            }
+            return updated;
+        });
+    };
+
+    const pollVeloraChat = async () => {
+        if (!veloraChannelId || !keepAlive) return;
+
+        try {
+            const res = await fetch(`/api/velora/history?channelId=${encodeURIComponent(veloraChannelId)}`);
+            if (!res.ok) {
+                setVeloraConnected(false);
+                veloraPollTimer = window.setTimeout(pollVeloraChat, 3000);
+                return;
+            }
+            const data = await res.json();
+            const items = extractVeloraMessages(data);
+            items
+                .map((item: any) => {
+                    const raw = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
+                    const numeric = Number(raw);
+                    const ts = Number.isNaN(numeric) ? new Date(String(raw)).getTime() : (numeric > 10_000_000_000 ? numeric : numeric * 1000);
+                    return { item, ts: Number.isNaN(ts) ? Date.now() : ts };
+                })
+                .sort((a, b) => a.ts - b.ts)
+                .forEach(({ item }) => addVeloraMessage(item));
+
+            setVeloraConnected(true);
+            veloraPollTimer = window.setTimeout(pollVeloraChat, 2500);
+        } catch (e) {
+            console.error("Failed to poll Velora chat:", e);
+            setVeloraConnected(false);
+            veloraPollTimer = window.setTimeout(pollVeloraChat, 3500);
+        }
+    };
+
+    const connectVelora = async (username: string) => {
+        console.log(`🟦 Kroma - Connecting to Velora #${username}`);
+        const resolved = await resolveVeloraUser(username);
+        const channelId = resolved?.userId || resolved?.raw?.id;
+        if (!channelId) {
+            console.error("Failed to resolve Velora channel ID.");
+            return;
+        }
+        veloraChannelId = String(channelId);
+        veloraSeenMessageIds.clear();
+        await loadVeloraEmotes(veloraChannelId);
+        pollVeloraChat();
+    };
+
     onMount(async () => {
         const selectedPlatforms = config().platforms;
         const hasKick = selectedPlatforms.includes('kick');
         const hasTwitch = selectedPlatforms.includes('twitch');
         const hasYouTube = selectedPlatforms.includes('youtube');
+        const hasVelora = selectedPlatforms.includes('velora');
         const twitchChannelName = config().twitchChannel;
         const kickChannelName = config().kickChannel;
         const youtubeChannelName = config().youtubeChannel;
+        const veloraChannelName = config().veloraChannel;
 
         if (hasKick && kickChannelName) {
             await connectKick(kickChannelName);
+        }
+
+        if (hasVelora && veloraChannelName) {
+            await connectVelora(veloraChannelName);
         }
 
         if (hasTwitch && twitchChannelName) {
@@ -1777,6 +2045,9 @@ export default function Chat() {
         if (youtubePollTimer) {
             window.clearTimeout(youtubePollTimer);
         }
+        if (veloraPollTimer) {
+            window.clearTimeout(veloraPollTimer);
+        }
     });
 
     return (
@@ -1883,12 +2154,17 @@ export default function Chat() {
                                     <Show when={(config().showBadges && msg.badges.length > 0) || config().showPlatformBadge}>
                                         <div class="flex gap-1 self-center shrink-0 select-none items-center">
                                             <Show when={config().showPlatformBadge}>
-                                                <img
-                                                    src={PLATFORM_LOGOS[((msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'kick') ? 'kick' : (msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'youtube' ? 'youtube' : 'twitch']}
-                                                    alt={((msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'kick') ? 'Kick' : (msg.platform || (config().platforms.length === 1 ? config().platforms[0] : 'twitch')) === 'youtube' ? 'YouTube' : 'Twitch'}
-                                                    class="platform-logo"
-                                                    loading="lazy"
-                                                />
+                                                {(() => {
+                                                    const platform = getMessagePlatform(msg);
+                                                    return (
+                                                        <img
+                                                            src={PLATFORM_LOGOS[platform]}
+                                                            alt={getPlatformLabel(platform)}
+                                                            class="platform-logo"
+                                                            loading="lazy"
+                                                        />
+                                                    );
+                                                })()}
                                             </Show>
                                             <For each={msg.badges}>
                                                 {(badge) => (

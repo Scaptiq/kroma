@@ -24,7 +24,7 @@ export interface ParsedEmote {
     type: 'emote';
     url: string;
     name: string;
-    provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'youtube' | 'twemoji';
+    provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'youtube' | 'twemoji' | 'velora';
     isZeroWidth?: boolean;
     overlayEmote?: boolean;
 }
@@ -68,9 +68,9 @@ export interface ChatMessage {
         id: string;
         url: string;
         title: string;
-        provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'chatterino';
+        provider: 'twitch' | 'kick' | '7tv' | 'bttv' | 'ffz' | 'chatterino' | 'velora';
     }>;
-    platform?: 'twitch' | 'kick' | 'youtube';
+    platform?: 'twitch' | 'kick' | 'youtube' | 'velora';
     kickBadges?: Array<{
         type: string;
         text?: string;

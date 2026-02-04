@@ -82,13 +82,14 @@ export default function ChatSetup() {
     });
 
     // Form state
-    type Platform = 'twitch' | 'kick' | 'youtube';
+    type Platform = 'twitch' | 'kick' | 'youtube' | 'velora';
     type PlatformTab = Platform | 'combined';
     const [platformTab, setPlatformTab] = createSignal<PlatformTab>('twitch');
     const [combinedPlatforms, setCombinedPlatforms] = createSignal<Platform[]>(['twitch']);
     const [twitchChannel, setTwitchChannel] = createSignal("");
     const [kickChannel, setKickChannel] = createSignal("");
     const [youtubeChannel, setYoutubeChannel] = createSignal("");
+    const [veloraChannel, setVeloraChannel] = createSignal("");
     const [showPronouns, setShowPronouns] = createSignal(true);
     const [showPlatformBadge, setShowPlatformBadge] = createSignal(true);
     const [showBadges, setShowBadges] = createSignal(true);
@@ -145,6 +146,8 @@ export default function ChatSetup() {
                 return kickChannel();
             case 'youtube':
                 return youtubeChannel();
+            case 'velora':
+                return veloraChannel();
             default:
                 return twitchChannel();
         }
@@ -158,6 +161,9 @@ export default function ChatSetup() {
             case 'youtube':
                 setYoutubeChannel(channelValue);
                 break;
+            case 'velora':
+                setVeloraChannel(channelValue);
+                break;
             default:
                 setTwitchChannel(channelValue);
         }
@@ -167,18 +173,23 @@ export default function ChatSetup() {
         if (platform === 'youtube') {
             return value.toLowerCase().replace(/[^a-z0-9_.-]/g, '');
         }
+        if (platform === 'velora') {
+            return value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        }
         return value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     };
 
     const getChannelPlaceholder = (platform: Platform) => {
         if (platform === 'kick') return "kick_username";
         if (platform === 'youtube') return "youtube_handle";
+        if (platform === 'velora') return "velora_username";
         return "twitch_username";
     };
 
     const getChannelPrefix = (platform: Platform) => {
         if (platform === 'kick') return "kick.com/";
         if (platform === 'youtube') return "youtube.com/@";
+        if (platform === 'velora') return "velora.tv/";
         return "twitch.tv/";
     };
 
@@ -193,6 +204,7 @@ export default function ChatSetup() {
     const renderPlatformLabel = (platform: Platform) => {
         if (platform === 'kick') return 'Kick';
         if (platform === 'youtube') return 'YouTube';
+        if (platform === 'velora') return 'Velora';
         return 'Twitch';
     };
 
@@ -212,6 +224,7 @@ export default function ChatSetup() {
         if (hasPlatform('twitch') && twitchChannel()) params.set('twitch', twitchChannel());
         if (hasPlatform('kick') && kickChannel()) params.set('kick', kickChannel());
         if (hasPlatform('youtube') && youtubeChannel()) params.set('youtube', youtubeChannel());
+        if (hasPlatform('velora') && veloraChannel()) params.set('velora', veloraChannel());
         if (!showPlatformBadge()) params.set('platformBadge', 'false');
         if (hasTwitch) {
             if (!showPronouns()) params.set('pronouns', 'false');
@@ -257,6 +270,7 @@ export default function ChatSetup() {
         if (hasPlatform('twitch') && twitchChannel()) url.searchParams.set('twitch', twitchChannel());
         if (hasPlatform('kick') && kickChannel()) url.searchParams.set('kick', kickChannel());
         if (hasPlatform('youtube') && youtubeChannel()) url.searchParams.set('youtube', youtubeChannel());
+        if (hasPlatform('velora') && veloraChannel()) url.searchParams.set('velora', veloraChannel());
         if (!showPlatformBadge()) url.searchParams.set('platformBadge', 'false');
         if (hasTwitch) {
             if (!showPronouns()) url.searchParams.set('pronouns', 'false');
@@ -437,6 +451,7 @@ export default function ChatSetup() {
                                                 { id: 'twitch', label: 'Twitch' },
                                                 { id: 'kick', label: 'Kick' },
                                                 { id: 'youtube', label: 'YouTube' },
+                                                { id: 'velora', label: 'Velora' },
                                                 { id: 'combined', label: 'Combined' }
                                             ]}>
                                                 {(tab) => (
@@ -455,7 +470,9 @@ export default function ChatSetup() {
                                                                             ? { background: 'linear-gradient(135deg, #22c55e, #15803d)', color: '#fff' }
                                                                             : tab.id === 'youtube'
                                                                                 ? { background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: '#fff' }
-                                                                                : { background: 'linear-gradient(135deg, #f97316, #ec4899, #8b5cf6, #22d3ee)', color: '#fff' })
+                                                                                : tab.id === 'velora'
+                                                                                    ? { background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#1f2937' }
+                                                                                    : { background: 'linear-gradient(135deg, #f97316, #ec4899, #8b5cf6, #22d3ee)', color: '#fff' })
                                                                 }
                                                                 : inactiveTabStyle)
                                                         }}
@@ -568,6 +585,28 @@ export default function ChatSetup() {
                                                         }}
                                                     />
                                                 </Paper>
+
+                                                <Paper class="glass-panel" sx={{ p: 2, borderRadius: 3, border: combinedPlatforms().includes('velora') ? '1px solid rgba(245,158,11,0.45)' : '1px solid rgba(255,255,255,0.08)' }}>
+                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                                                        <Typography sx={{ fontWeight: 700, color: '#fbbf24' }}>Velora</Typography>
+                                                        <Checkbox checked={combinedPlatforms().includes('velora')} onChange={() => toggleCombinedPlatform('velora')} />
+                                                    </Stack>
+                                                    <TextField
+                                                        fullWidth
+                                                        variant="outlined"
+                                                        placeholder="velora_username"
+                                                        value={veloraChannel()}
+                                                        onChange={(e) => setVeloraChannel(sanitizeChannel(e.target.value, 'velora'))}
+                                                        sx={inputSx}
+                                                        InputProps={{
+                                                            startAdornment: (
+                                                                <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
+                                                                    velora.tv/
+                                                                </Typography>
+                                                            )
+                                                        }}
+                                                    />
+                                                </Paper>
                                             </Stack>
                                         </Show>
 
@@ -595,6 +634,19 @@ export default function ChatSetup() {
                                                 }}
                                             >
                                                 YouTube chat is live. Super Chats and 7TV emotes/paints are supported.
+                                            </Alert>
+                                        </Show>
+                                        <Show when={hasPlatform('velora')}>
+                                            <Alert
+                                                severity="warning"
+                                                sx={{
+                                                    mt: 2,
+                                                    bgcolor: 'rgba(245, 158, 11, 0.15)',
+                                                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                                                    color: '#fde68a'
+                                                }}
+                                            >
+                                                Velora support is in early testing and may be unstable or unavailable.
                                             </Alert>
                                         </Show>
                                     </Paper>
@@ -744,12 +796,14 @@ export default function ChatSetup() {
                                                                         <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
                                                                             {renderPlatformLabel(platform)}
                                                                         </Typography>
-                                                                        <Show when={platform === 'twitch' || platform === 'kick' || platform === 'youtube'}>
+                                                                        <Show when={platform === 'twitch' || platform === 'kick' || platform === 'youtube' || platform === 'velora'}>
                                                                             <>
                                                                                 <Show when={platform === 'twitch' || platform === 'kick'}>
                                                                                     <FormControlLabel control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="secondary" />} label="Subscriber Badges" />
                                                                                 </Show>
-                                                                                <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
+                                                                                <Show when={platform === 'twitch' || platform === 'kick' || platform === 'youtube'}>
+                                                                                    <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
+                                                                                </Show>
                                                                                 <Show when={platform === 'twitch'}>
                                                                                     <FormControlLabel control={<Switch checked={showRoomState()} onChange={(_, v) => setShowRoomState(v)} color="secondary" />} label="Show Room State" />
                                                                                 </Show>
@@ -770,6 +824,11 @@ export default function ChatSetup() {
                                                                         <Show when={platform === 'youtube'}>
                                                                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                                                 YouTube supports 7TV emotes and paints.
+                                                                            </Typography>
+                                                                        </Show>
+                                                                        <Show when={platform === 'velora'}>
+                                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                                Velora supports native emotes.
                                                                             </Typography>
                                                                         </Show>
                                                                     </Box>
@@ -814,10 +873,10 @@ export default function ChatSetup() {
                                                             <For each={sectionPlatforms()}>
                                                                 {(platform) => (
                                                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
-                                                                            {renderPlatformLabel(platform)}
-                                                                        </Typography>
-                                                                        <Show when={platform === 'twitch' || platform === 'kick'}>
+                                                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
+                                                                    {renderPlatformLabel(platform)}
+                                                                </Typography>
+                                                                        <Show when={platform === 'twitch' || platform === 'kick' || platform === 'velora'}>
                                                                             <>
                                                                                 <TextField
                                                                                     fullWidth size="small"
@@ -840,7 +899,7 @@ export default function ChatSetup() {
                                                                                     <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots (Streamelements, etc)" />
                                                                                 </Box>
                                                                                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                                    These filters apply across Twitch and Kick.
+                                                                                    These filters apply across all platforms.
                                                                                 </Typography>
                                                                             </>
                                                                         </Show>
