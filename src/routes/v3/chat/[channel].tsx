@@ -1695,6 +1695,82 @@ export default function Chat() {
         if (config().customBots.includes(username.toLowerCase())) return;
         if (config().hideCommands && content.startsWith("!")) return;
 
+        const normalizeVeloraBadgeUrl = (value: string) => {
+            if (value.startsWith("http")) return value;
+            if (value.startsWith("/")) return value;
+            return value;
+        };
+
+        const createTextBadge = (text: string) => {
+            const safe = text.slice(0, 3).toUpperCase();
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect x="4" y="4" width="56" height="56" rx="12" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.25)" /><text x="32" y="40" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="24" font-weight="700" fill="rgba(255,255,255,0.8)">${safe}</text></svg>`;
+            return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+        };
+
+        const extractVeloraBadges = (source: any): Badge[] => {
+            const badges: Badge[] = [];
+            const entries = Array.isArray(source) ? source : [];
+            entries.forEach((badge: any, index: number) => {
+                if (!badge) return;
+                if (typeof badge === "string") {
+                    badges.push({
+                        id: `velora-${badge}-${index}`,
+                        title: badge,
+                        url: createTextBadge(badge.slice(0, 2)),
+                        provider: "velora"
+                    });
+                    return;
+                }
+                const assetVariants = badge?.assetVariants || badge?.assets || badge?.variants;
+                const variantUrl =
+                    assetVariants?.static2x ||
+                    assetVariants?.static1x ||
+                    assetVariants?.static4x ||
+                    assetVariants?.animated2x ||
+                    assetVariants?.animated1x ||
+                    assetVariants?.animated4x;
+                const url =
+                    badge?.url ||
+                    badge?.imageUrl ||
+                    badge?.image_url ||
+                    badge?.image ||
+                    badge?.src ||
+                    badge?.icon ||
+                    variantUrl;
+                const title = badge?.title || badge?.name || badge?.label || badge?.type || "Badge";
+                const text = badge?.text || badge?.abbr || badge?.abbreviation;
+                if (url) {
+                    badges.push({
+                        id: `velora-${badge?.id || title}-${index}`,
+                        title: String(title),
+                        url: normalizeVeloraBadgeUrl(String(url)),
+                        provider: "velora"
+                    });
+                    return;
+                }
+                if (text) {
+                    badges.push({
+                        id: `velora-${title}-${index}`,
+                        title: String(title),
+                        url: createTextBadge(String(text)),
+                        provider: "velora"
+                    });
+                }
+            });
+            return badges;
+        };
+
+        const badgeSource =
+            item?.badges ||
+            item?.badge ||
+            item?.roles ||
+            item?.user?.badges ||
+            item?.user?.roles ||
+            item?.author?.badges ||
+            [];
+
+        const veloraBadges = extractVeloraBadges(badgeSource);
+
         const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
 
         const rawEffect = item?.effect || item?.messageEffect || item?.message_effect;
@@ -1712,13 +1788,13 @@ export default function Chat() {
             userId,
             content,
             parsedContent,
-            color: item?.color || user?.color || generateColor(username),
+            color: generateColor(username),
             timestamp,
             type: "chat",
             isAction: false,
             isFirstMessage: false,
             isHighlighted: false,
-            badges: [],
+            badges: veloraBadges,
             platform: "velora",
             isShared: false,
             effect,
