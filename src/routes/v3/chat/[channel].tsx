@@ -894,6 +894,16 @@ export default function Chat() {
         const badges = await getUserBadges(badgeSource, userId);
         const parsedContent = parseMessageContent(message, tags.emotes, bits, 'twitch');
 
+        const dedupeBadges = (badges: Badge[]) => {
+            const seen = new Set<string>();
+            return badges.filter((badge) => {
+                const key = `${badge.url}|${badge.title}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        };
+
         const newMessage: ChatMessage = {
             id: messageId,
             username,
@@ -1922,7 +1932,7 @@ export default function Chat() {
             isAction: false,
             isFirstMessage: false,
             isHighlighted: false,
-            badges: [...veloraBadges, ...roleBadges, ...flagBadges],
+            badges: dedupeBadges([...veloraBadges, ...roleBadges, ...flagBadges]),
             platform: "velora",
             isShared: false,
             effect,
