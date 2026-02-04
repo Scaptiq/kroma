@@ -102,6 +102,10 @@ export interface ChatMessage {
     // Bits/Cheer
     bits?: number;
 
+    // Velora message effects
+    effect?: 'glow' | 'galaxy' | 'rainbow' | 'gigantify' | string;
+    effectColor?: string;
+
     // Sub info (for sub messages)
     subInfo?: {
         months: number;

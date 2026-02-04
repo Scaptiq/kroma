@@ -159,6 +159,7 @@ export default function Chat() {
     let veloraSeenMessageIds = new Set<string>();
     let veloraChannelId: string | null = null;
     let veloraEmoteMap = new Map<string, string>();
+    let veloraResolveInFlight = new Set<string>();
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -1302,6 +1303,11 @@ export default function Chat() {
         if (msg.isHighlighted) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
+        if (msg.platform === 'velora' && msg.effect) {
+            classes.push('velora-effect');
+            classes.push(`velora-effect--${msg.effect}`);
+        }
+
         // Check if message was deleted
         if (deletedMessages().has(msg.id)) classes.push('message-deleted');
 
@@ -1579,6 +1585,42 @@ export default function Chat() {
         }
     };
 
+    const extractVeloraEmoteList = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data.emotes)) return data.emotes;
+        if (Array.isArray(data.items)) return data.items;
+        if (Array.isArray(data.data)) return data.data;
+        if (Array.isArray(data.results)) return data.results;
+        return [];
+    };
+
+    const resolveVeloraEmotes = async (codes: string[]) => {
+        if (codes.length === 0) return;
+        const unique = Array.from(new Set(codes)).filter(code => code && code.length <= 32);
+        const pending = unique.filter(code => !veloraEmoteMap.has(code) && !veloraResolveInFlight.has(code));
+        if (pending.length === 0) return;
+        pending.forEach(code => veloraResolveInFlight.add(code));
+
+        try {
+            const res = await fetch(`/api/velora/emotes/resolve?codes=${encodeURIComponent(pending.join(','))}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = extractVeloraEmoteList(data);
+            list.forEach((item: any) => {
+                const code = item?.code || item?.name || item?.text || item?.shortcode || item?.shortCode || item?.id;
+                const url = item?.url || item?.imageUrl || item?.image_url || item?.image || item?.src || item?.images?.full || item?.images?.original;
+                if (code && url) {
+                    veloraEmoteMap.set(String(code), String(url));
+                }
+            });
+        } catch (e) {
+            console.error("Failed to resolve Velora emotes:", e);
+        } finally {
+            pending.forEach(code => veloraResolveInFlight.delete(code));
+        }
+    };
+
     const extractVeloraMessages = (data: any): any[] => {
         if (!data) return [];
         if (Array.isArray(data)) return data;
@@ -1622,6 +1664,14 @@ export default function Chat() {
 
         const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
 
+        const rawEffect = item?.effect || item?.messageEffect || item?.message_effect;
+        const effect = typeof rawEffect === "string" ? rawEffect.toLowerCase() : undefined;
+        const effectColor = typeof item?.effectColor === "string"
+            ? item.effectColor
+            : typeof item?.effect_color === "string"
+                ? item.effect_color
+                : undefined;
+
         const newMessage: ChatMessage = {
             id: messageKey,
             username,
@@ -1638,6 +1688,8 @@ export default function Chat() {
             badges: [],
             platform: "velora",
             isShared: false,
+            effect,
+            effectColor,
         };
 
         setMessages(prev => {
@@ -1647,6 +1699,22 @@ export default function Chat() {
             }
             return updated;
         });
+
+        if (config().showEmotes) {
+            const tokens = content.split(/\s+/).map(t => t.trim()).filter(Boolean);
+            const candidates = tokens.filter(token => !token.startsWith("@") && !token.startsWith("http") && token.length <= 32);
+            const missing = candidates.filter(token => !veloraEmoteMap.has(token));
+            if (missing.length > 0) {
+                resolveVeloraEmotes(missing).then(() => {
+                    if (!keepAlive) return;
+                    setMessages(prev => prev.map(m =>
+                        m.id === messageKey
+                            ? { ...m, parsedContent: parseVeloraMessageContent(content, item?.emotes || item?.emoticons) }
+                            : m
+                    ));
+                });
+            }
+        }
     };
 
     const pollVeloraChat = async () => {
@@ -2108,7 +2176,8 @@ export default function Chat() {
                                 data-fading={config().fadeOutMessages ? "true" : "false"}
                                 style={{
                                     "animation-delay": `${index() * 20}ms, var(--fade-delay)`,
-                                    ...(msg.isAction ? { color: msg.color } : {})
+                                    ...(msg.isAction ? { color: msg.color } : {}),
+                                    ...(msg.effectColor ? { "--velora-effect-color": msg.effectColor } : {})
                                 }}
                             >
                                 {/* Reply Context */}
@@ -2227,7 +2296,7 @@ export default function Chat() {
 
                                     {/* Message Content */}
                                     <span
-                                        class="text-white break-words"
+                                        class="text-white break-words message-content"
                                         style={msg.isAction ? { color: msg.color } : undefined}
                                     >
                                         <For each={msg.parsedContent}>
