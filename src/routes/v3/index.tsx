@@ -1,41 +1,14 @@
 import { createSignal, Show, For, createEffect } from "solid-js";
 import { useLocation, useNavigate } from "solid-start";
-import {
-    Box,
-    Card,
-    CardContent,
-    Checkbox,
-    Container,
-    createTheme,
-    Divider,
-    FormControlLabel,
-    FormGroup,
-    Grid,
-    IconButton,
-    Paper,
-    Stack,
-    TextField,
-    ThemeProvider,
-    Typography,
-    Switch,
-    Button,
-    Alert
-} from "@suid/material";
-
-
-import ContentCopyIcon from "@suid/icons-material/ContentCopy";
-import OpenInNewIcon from "@suid/icons-material/OpenInNew";
-import CheckCircleIcon from "@suid/icons-material/CheckCircle";
-import SettingsIcon from "@suid/icons-material/Settings";
-import VisibilityIcon from "@suid/icons-material/Visibility";
-import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
-import InfoIcon from "@suid/icons-material/Info";
-import TextFieldsIcon from "@suid/icons-material/TextFields";
 
 import MySiteTitle from "~/components/MySiteTitle";
 import GradientSlider from "~/components/GradientSlider";
+import { Button } from "~/components/ui/Button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/Card";
+import { Input } from "~/components/ui/Input";
+import { Label } from "~/components/ui/Label";
+import { Switch } from "~/components/ui/Switch";
 
-// Preset fonts that users can choose from
 const PRESET_FONTS = [
     { name: 'Segoe UI', value: 'Segoe UI' },
     { name: 'Inter', value: 'Inter' },
@@ -69,32 +42,10 @@ export default function ChatSetup() {
             navigate(`/setup${location.search}`, { replace: true });
         }
     });
-    const theme = createTheme({
-        palette: {
-            mode: 'dark',
-            primary: { main: '#F472B6' }, // Pink 400
-            secondary: { main: '#2DD4BF' }, // Teal 400
-            background: {
-                default: 'transparent',
-                paper: 'rgba(255, 255, 255, 0.05)',
-            },
-            text: {
-                primary: '#fff',
-                secondary: 'rgba(255, 255, 255, 0.7)',
-            }
-        },
-        typography: {
-            fontFamily: '"Inter", "Segoe UI", sans-serif',
-            button: { fontWeight: 600, textTransform: 'none', borderRadius: 12 },
-            h5: { fontWeight: 800 },
-            h6: { fontWeight: 700 }
-        },
-        shape: { borderRadius: 16 }
-    });
 
-    // Form state
     type Platform = 'twitch' | 'kick' | 'youtube' | 'velora';
     type PlatformTab = Platform | 'combined';
+
     const [platformTab, setPlatformTab] = createSignal<PlatformTab>('twitch');
     const [combinedPlatforms, setCombinedPlatforms] = createSignal<Platform[]>(['twitch']);
     const [twitchChannel, setTwitchChannel] = createSignal("");
@@ -128,7 +79,6 @@ export default function ChatSetup() {
     const [previewUrl, setPreviewUrl] = createSignal("");
     const [activeTab, setActiveTab] = createSignal(0);
 
-    // Get the effective font to use
     const getEffectiveFont = () => {
         if (useCustomFont() && customFont().trim()) {
             return customFont().trim();
@@ -219,7 +169,6 @@ export default function ChatSetup() {
         return 'Twitch';
     };
 
-    // Update preview URL when settings change
     createEffect(() => {
         const params = new URLSearchParams();
         const selected = selectedPlatforms();
@@ -272,8 +221,6 @@ export default function ChatSetup() {
         const primaryChannel = getPrimaryChannel();
         if (!primaryChannel) return "";
         const base = `${typeof window !== 'undefined' ? window.location.origin : ''}/chat/${primaryChannel}`;
-        // We can reuse the search params logic but it's bound to the effect.
-        // Replicating simple string generation for the input box:
         const url = new URL(base);
         const selected = selectedPlatforms();
         const hasTwitch = selected.includes('twitch');
@@ -308,18 +255,15 @@ export default function ChatSetup() {
         if (customBots().trim()) url.searchParams.set('bots', customBots().trim());
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') url.searchParams.set('font', font);
-
         return url.toString();
     };
-
-
 
     const handleCopy = async () => {
         const url = generateUrl();
         if (url) {
             await navigator.clipboard.writeText(url);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            setTimeout(() => setCopied(false), 1500);
         }
     };
 
@@ -328,716 +272,363 @@ export default function ChatSetup() {
         if (url) window.open(url, '_blank');
     };
 
-    const activeTabStyle = {
-        background: 'rgba(255, 255, 255, 0.15)',
-        color: '#fff',
-        fontWeight: 600
-    };
-
-    const inactiveTabStyle = {
-        background: 'transparent',
-        color: 'rgba(255, 255, 255, 0.5)',
-        fontWeight: 500
-    };
-
-    const inputSx = {
-        '& .MuiOutlinedInput-root': {
-            bgcolor: 'rgba(0,0,0,0.2)',
-            borderRadius: 2,
-            '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-            '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-            '&.Mui-focused fieldset': { borderColor: '#F472B6' }
-        }
-    };
-
     return (
-        <>
+        <div class="min-h-screen bg-black text-slate-100">
             <MySiteTitle>Kroma - Setup</MySiteTitle>
-            <ThemeProvider theme={theme}>
-                <style>{`
-                    /* Dreamy Background Animation */
-                    @keyframes float {
-                        0% { transform: translate(0px, 0px) scale(1); }
-                        33% { transform: translate(30px, -50px) scale(1.1); }
-                        66% { transform: translate(-20px, 20px) scale(0.9); }
-                        100% { transform: translate(0px, 0px) scale(1); }
-                    }
+            <div class="relative overflow-hidden">
+                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.08),_transparent_45%),radial-gradient(circle_at_30%_60%,_rgba(245,158,11,0.08),_transparent_40%)]" />
+                <div class="relative">
+                    <header class="sticky top-0 z-20 border-b border-slate-900 bg-black/70 backdrop-blur">
+                        <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 overflow-hidden rounded-md bg-slate-900">
+                                    <img src="/kroma-logo.png" alt="Kroma" class="h-full w-full object-cover" />
+                                </div>
+                                <div>
+                                    <h1 class="text-lg font-semibold">Kroma</h1>
+                                    <p class="text-xs text-slate-400">Inclusive Chat Overlay</p>
+                                </div>
+                            </div>
+                            <a
+                                href="https://github.com/scaptiq/kroma"
+                                target="_blank"
+                                class="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+                            >
+                                <svg viewBox="0 0 24 24" class="h-4 w-4 fill-current" aria-hidden="true">
+                                    <path d="M12 .5C5.65.5.5 5.78.5 12.3c0 5.23 3.44 9.66 8.2 11.23.6.12.82-.27.82-.6 0-.3-.02-1.27-.02-2.3-3 .56-3.78-.74-4.02-1.42-.13-.35-.7-1.42-1.2-1.7-.41-.23-.98-.8-.02-.82.9-.02 1.55.86 1.77 1.22 1.03 1.77 2.67 1.27 3.32.97.1-.76.4-1.27.72-1.56-2.66-.3-5.45-1.38-5.45-6.1 0-1.35.46-2.46 1.2-3.32-.12-.3-.52-1.55.1-3.23 0 0 1-.33 3.32 1.27.96-.28 2-.42 3.03-.42 1.03 0 2.07.14 3.03.42 2.32-1.62 3.32-1.27 3.32-1.27.62 1.68.22 2.93.1 3.23.75.86 1.2 1.96 1.2 3.32 0 4.74-2.8 5.8-5.47 6.1.41.37.77 1.08.77 2.2 0 1.6-.02 2.9-.02 3.3 0 .33.22.73.82.6 4.76-1.57 8.2-6 8.2-11.23C23.5 5.78 18.35.5 12 .5Z" />
+                                </svg>
+                                GitHub
+                            </a>
+                        </div>
+                    </header>
 
-                    .aurora-blob {
-                        position: absolute;
-                        filter: blur(80px);
-                        opacity: 0.4;
-                        animation: float 10s ease-in-out infinite;
-                        z-index: 0;
-                        border-radius: 50%;
-                    }
+                    <main class="mx-auto grid max-w-6xl gap-6 px-6 py-6 lg:grid-cols-[360px_1fr]">
+                        <section class="space-y-6">
+                            <div class="rounded-lg border border-slate-900 bg-black/60 px-4 py-3 text-sm text-slate-300">
+                                <span class="font-semibold text-white">Hello there!</span> Let’s get your chat overlay dialed in.
+                            </div>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Setup</CardTitle>
+                                    <CardDescription>Pick a platform and channel to get started.</CardDescription>
+                                </CardHeader>
+                                <CardContent class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <For each={[
+                                            { id: 'twitch', label: 'Twitch', active: '!bg-purple-600 !text-white hover:!bg-purple-500 border-purple-500/80' },
+                                            { id: 'kick', label: 'Kick', active: '!bg-emerald-600 !text-white hover:!bg-emerald-500 border-emerald-500/80' },
+                                            { id: 'youtube', label: 'YouTube', active: '!bg-red-600 !text-white hover:!bg-red-500 border-red-500/80' },
+                                            { id: 'velora', label: 'Velora', active: '!bg-amber-400 !text-black hover:!bg-amber-300 border-amber-300' },
+                                            { id: 'combined', label: 'Multichat', active: '!bg-slate-200 !text-black hover:!bg-white border-slate-200' }
+                                        ]}>
+                                            {(tab) => (
+                                                <Button
+                                                    variant="secondary"
+                                                    class={`w-full ${platformTab() === tab.id ? tab.active : ''}`}
+                                                    onClick={() => setPlatformTab(tab.id as PlatformTab)}
+                                                >
+                                                    {tab.label}
+                                                </Button>
+                                            )}
+                                        </For>
+                                    </div>
 
-                    /* Custom Scrollbar for the preview */
-                    ::-webkit-scrollbar { width: 8px; height: 8px; }
-                    ::-webkit-scrollbar-track { background: transparent; }
-                    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-                    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
-
-                    /* Premium Slider */
-
-
-                    /* Glassmorphism Panel */
-                    .glass-panel {
-                        background: rgba(255, 255, 255, 0.03) !important;
-                        backdrop-filter: blur(20px);
-                        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-                        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-                        transition: transform 0.3s, border-color 0.3s;
-                    }
-                    .glass-panel:hover {
-                        border-color: rgba(255, 255, 255, 0.15) !important;
-                    }
-                `}</style>
-
-                {/* Background Layers */}
-                <Box sx={{ position: 'fixed', inset: 0, bgcolor: '#0f0c29', zIndex: -2, background: 'linear-gradient(to bottom right, #1a1b4b, #2e1065, #0f172a)' }} />
-                <Box class="aurora-blob" sx={{ top: '10%', left: '10%', width: '40vw', height: '40vw', background: '#4c1d95', animationDelay: '0s' }} />
-                <Box class="aurora-blob" sx={{ top: '40%', right: '10%', width: '35vw', height: '35vw', background: '#be185d', animationDelay: '-2s' }} />
-                <Box class="aurora-blob" sx={{ bottom: '10%', left: '20%', width: '30vw', height: '30vw', background: '#0e7490', animationDelay: '-4s' }} />
-
-                <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
-
-                    {/* Navbar */}
-                    <Box sx={{
-                        py: 2,
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        background: 'rgba(15, 23, 42, 0.3)',
-                        backdropFilter: 'blur(20px)',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 100
-                    }}>
-                        <Container maxWidth="xl">
-                            <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                <Stack direction="row" alignItems="center" spacing={2}>
-                                    <Box sx={{
-                                        width: 44, height: 44,
-                                        borderRadius: '12px',
-                                        overflow: 'hidden',
-                                        boxShadow: '0 0 20px rgba(192, 132, 252, 0.4)'
-                                    }}>
-                                        <img src="/kroma-logo.png" style={{ width: '100%', height: '100%', "object-fit": 'cover' }} alt="Kroma Logo" />
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                                            Kroma
-                                        </Typography>
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.65rem' }}>
-                                            Inclusive Chat Overlay
-                                        </Typography>
-                                    </Box>
-                                </Stack>
-                                <a href="https://github.com/scaptiq/kroma" target="_blank" style={{ "text-decoration": 'none', display: 'flex' }}>
-                                    <IconButton sx={{ color: 'white', '&:hover': { background: 'rgba(255,255,255,0.1)' } }}>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.616-4.033-1.616-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                                        </svg>
-                                    </IconButton>
-                                </a>
-                            </Stack>
-                        </Container>
-                    </Box>
-
-                    <Container maxWidth="xl" sx={{ flex: 1, py: 5 }}>
-                        <Grid container spacing={4} sx={{ height: '100%' }}>
-
-                            {/* Settings Column */}
-                            <Grid item xs={12} lg={4}>
-                                <Stack spacing={3}>
-
-                                    {/* Welcome / Setup */}
-                                    <Paper class="glass-panel" sx={{ p: 4, position: 'relative', overflow: 'hidden' }}>
-                                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #F472B6, #C084FC, #2DD4BF)' }} />
-                                        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Hello there! 👋</Typography>
-                                        <Typography sx={{ color: 'rgba(255,255,255,0.7)', mb: 3 }}>
-                                            Welcome to Kroma. Choose a platform and enter your channel below to get started.
-                                        </Typography>
-                                        <Paper class="glass-panel" sx={{ p: 0.75, mb: 2, display: 'flex', borderRadius: 3 }}>
-                                            <For each={[
-                                                { id: 'twitch', label: 'Twitch' },
-                                                { id: 'kick', label: 'Kick' },
-                                                { id: 'youtube', label: 'YouTube' },
-                                                { id: 'velora', label: 'Velora' },
-                                                { id: 'combined', label: 'Combined' }
-                                            ]}>
-                                                {(tab) => (
-                                                    <Button
-                                                        fullWidth
-                                                        onClick={() => setPlatformTab(tab.id as PlatformTab)}
-                                                        sx={{
-                                                            py: 1.1,
-                                                            borderRadius: 2.5,
-                                                            transition: 'all 0.3s',
-                                                            ...(platformTab() === tab.id
-                                                                ? {
-                                                                    ...(tab.id === 'twitch'
-                                                                        ? { background: 'linear-gradient(135deg, #9147ff, #5b1fd6)', color: '#fff' }
-                                                                        : tab.id === 'kick'
-                                                                            ? { background: 'linear-gradient(135deg, #22c55e, #15803d)', color: '#fff' }
-                                                                            : tab.id === 'youtube'
-                                                                                ? { background: 'linear-gradient(135deg, #ef4444, #b91c1c)', color: '#fff' }
-                                                                                : tab.id === 'velora'
-                                                                                    ? { background: 'linear-gradient(135deg, #f59e0b, #f97316)', color: '#1f2937' }
-                                                                                    : { background: 'linear-gradient(135deg, #f97316, #ec4899, #8b5cf6, #22d3ee)', color: '#fff' })
-                                                                }
-                                                                : inactiveTabStyle)
-                                                        }}
-                                                    >
-                                                        {tab.label}
-                                                    </Button>
-                                                )}
-                                            </For>
-                                        </Paper>
-
-                                        <Show when={platformTab() !== 'combined'}>
-                                            {(() => {
-                                                const current = platformTab() as Platform;
-                                                return (
-                                                    <>
-                                                        <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', mb: 2 }}>
-                                                            Single mode connects to the selected platform.
-                                                        </Typography>
-                                                        <TextField
-                                                            fullWidth
-                                                            variant="outlined"
+                                    <Show when={platformTab() !== 'combined'}>
+                                        {(() => {
+                                            const current = platformTab() as Platform;
+                                            return (
+                                                <div class="space-y-2">
+                                                    <Label>Channel</Label>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs text-slate-500">{getChannelPrefix(current)}</span>
+                                                        <Input
                                                             placeholder={getChannelPlaceholder(current)}
                                                             value={getChannelForPlatform(current)}
-                                                            onChange={(e) => setChannelForPlatform(current, sanitizeChannel(e.target.value, current))}
-                                                            sx={inputSx}
-                                                            InputProps={{
-                                                                startAdornment: (
-                                                                    <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
-                                                                        {getChannelPrefix(current)}
-                                                                    </Typography>
-                                                                )
-                                                            }}
+                                                            onInput={(e) => setChannelForPlatform(current, sanitizeChannel(e.currentTarget.value, current))}
                                                         />
-                                                    </>
-                                                );
-                                            })()}
-                                        </Show>
-
-                                        <Show when={platformTab() === 'combined'}>
-                                            <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', mb: 2 }}>
-                                                Combined mode connects to all selected platforms with their own usernames.
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 2, display: 'block' }}>
-                                                Toggle platforms and add the usernames you want to merge.
-                                            </Typography>
-
-                                            <Stack spacing={2.5}>
-                                                <Paper class="glass-panel" sx={{ p: 2, borderRadius: 3, border: combinedPlatforms().includes('twitch') ? '1px solid rgba(145,71,255,0.35)' : '1px solid rgba(255,255,255,0.08)' }}>
-                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                                        <Typography sx={{ fontWeight: 700, color: '#c4b5fd' }}>Twitch</Typography>
-                                                        <Checkbox checked={combinedPlatforms().includes('twitch')} onChange={() => toggleCombinedPlatform('twitch')} />
-                                                    </Stack>
-                                                    <TextField
-                                                        fullWidth
-                                                        variant="outlined"
-                                                        placeholder="twitch_username"
-                                                        value={twitchChannel()}
-                                                        onChange={(e) => setTwitchChannel(sanitizeChannel(e.target.value, 'twitch'))}
-                                                        sx={inputSx}
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
-                                                                    twitch.tv/
-                                                                </Typography>
-                                                            )
-                                                        }}
-                                                    />
-                                                </Paper>
-
-                                                <Paper class="glass-panel" sx={{ p: 2, borderRadius: 3, border: combinedPlatforms().includes('kick') ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(255,255,255,0.08)' }}>
-                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                                        <Typography sx={{ fontWeight: 700, color: '#86efac' }}>Kick</Typography>
-                                                        <Checkbox checked={combinedPlatforms().includes('kick')} onChange={() => toggleCombinedPlatform('kick')} />
-                                                    </Stack>
-                                                    <TextField
-                                                        fullWidth
-                                                        variant="outlined"
-                                                        placeholder="kick_username"
-                                                        value={kickChannel()}
-                                                        onChange={(e) => setKickChannel(sanitizeChannel(e.target.value, 'kick'))}
-                                                        sx={inputSx}
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
-                                                                    kick.com/
-                                                                </Typography>
-                                                            )
-                                                        }}
-                                                    />
-                                                </Paper>
-
-                                                <Paper class="glass-panel" sx={{ p: 2, borderRadius: 3, border: combinedPlatforms().includes('youtube') ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(255,255,255,0.08)' }}>
-                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                                        <Typography sx={{ fontWeight: 700, color: '#fca5a5' }}>YouTube</Typography>
-                                                        <Checkbox checked={combinedPlatforms().includes('youtube')} onChange={() => toggleCombinedPlatform('youtube')} />
-                                                    </Stack>
-                                                    <TextField
-                                                        fullWidth
-                                                        variant="outlined"
-                                                        placeholder="youtube_handle"
-                                                        value={youtubeChannel()}
-                                                        onChange={(e) => setYoutubeChannel(sanitizeChannel(e.target.value, 'youtube'))}
-                                                        sx={inputSx}
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
-                                                                    youtube.com/@
-                                                                </Typography>
-                                                            )
-                                                        }}
-                                                    />
-                                                </Paper>
-
-                                                <Paper class="glass-panel" sx={{ p: 2, borderRadius: 3, border: combinedPlatforms().includes('velora') ? '1px solid rgba(245,158,11,0.45)' : '1px solid rgba(255,255,255,0.08)' }}>
-                                                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                                        <Typography sx={{ fontWeight: 700, color: '#fbbf24' }}>Velora</Typography>
-                                                        <Checkbox checked={combinedPlatforms().includes('velora')} onChange={() => toggleCombinedPlatform('velora')} />
-                                                    </Stack>
-                                                    <TextField
-                                                        fullWidth
-                                                        variant="outlined"
-                                                        placeholder="velora_username"
-                                                        value={veloraChannel()}
-                                                        onChange={(e) => setVeloraChannel(sanitizeChannel(e.target.value, 'velora'))}
-                                                        sx={inputSx}
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <Typography sx={{ color: 'rgba(255,255,255,0.4)', mr: 1, fontWeight: 600 }}>
-                                                                    velora.tv/
-                                                                </Typography>
-                                                            )
-                                                        }}
-                                                    />
-                                                </Paper>
-                                            </Stack>
-                                        </Show>
-
-                                        <Show when={hasPlatform('velora')}>
-                                            <Alert
-                                                severity="warning"
-                                                sx={{
-                                                    mt: 2,
-                                                    bgcolor: 'rgba(245, 158, 11, 0.15)',
-                                                    border: '1px solid rgba(245, 158, 11, 0.4)',
-                                                    color: '#fde68a'
-                                                }}
-                                            >
-                                                Velora support is in early testing and may be unstable or unavailable.
-                                            </Alert>
-                                        </Show>
-                                    </Paper>
-
-                                    {/* Feature Tabs */}
-                                    <Box>
-                                        <Paper class="glass-panel" sx={{ p: 0.75, mb: 2, display: 'flex', borderRadius: 3 }}>
-                                            <For each={['General', 'Visuals', 'Safety']}>
-                                                {(tab, idx) => (
-                                                    <Button
-                                                        fullWidth
-                                                        onClick={() => setActiveTab(idx())}
-                                                        sx={{
-                                                            py: 1.2,
-                                                            borderRadius: 2.5,
-                                                            transition: 'all 0.3s',
-                                                            ...(activeTab() === idx() ? activeTabStyle : inactiveTabStyle)
-                                                        }}
-                                                    >
-                                                        {tab}
-                                                    </Button>
-                                                )}
-                                            </For>
-                                        </Paper>
-
-                                        <Paper class="glass-panel" sx={{ p: 4, minHeight: hasPlatform('twitch') ? 450 : 320 }}>
-
-                                            {/* General */}
-                                            <Show when={activeTab() === 0}>
-                                                <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>Chat Features</Typography>
-                                                <Stack spacing={2}>
-                                                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                        <FormControlLabel control={<Switch checked={showPlatformBadge()} onChange={(_, v) => setShowPlatformBadge(v)} color="secondary" />} label="Show Platform Badge" />
-                                                        <Typography variant="caption" sx={{ display: 'block', pl: 4, color: 'text.secondary', mt: -0.5 }}>
-                                                            Adds a small platform tag before usernames.
-                                                        </Typography>
-                                                        <FormControlLabel control={<Switch checked={showTimestamps()} onChange={(_, v) => setShowTimestamps(v)} color="secondary" />} label="Show Timestamps" />
-                                                    </Box>
-
-                                                    <For each={sectionPlatforms()}>
-                                                        {(platform) => (
-                                                            <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
-                                                                    {renderPlatformLabel(platform)}
-                                                                </Typography>
-                                                                <Show when={platform === 'twitch'}>
-                                                                    <>
-                                                                        <FormControlLabel
-                                                                            control={<Switch checked={showSharedChat()} onChange={(_, v) => setShowSharedChat(v)} color="secondary" />}
-                                                                            label="Shared Chat Integration"
-                                                                        />
-                                                                        <Typography variant="caption" sx={{ display: 'block', pl: 4, color: 'text.secondary', mt: -0.5 }}>
-                                                                            Support for Stream Together / Guest Star sources.
-                                                                        </Typography>
-                                                                        <FormControlLabel control={<Switch checked={showReplies()} onChange={(_, v) => setShowReplies(v)} color="secondary" />} label="Show Replies" />
-                                                                        <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(192, 132, 252, 0.1), rgba(244, 114, 182, 0.1), rgba(221, 160, 221, 0.1))', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                            <FormControlLabel
-                                                                                control={<Switch checked={showPronouns()} onChange={(_, v) => setShowPronouns(v)} color="primary" />}
-                                                                                label={<Typography sx={{ fontWeight: 600, color: '#F472B6' }}>Show Pronouns</Typography>}
-                                                                            />
-                                                                            <Show when={showPronouns()}>
-                                                                                <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', mt: 1 }}>
-                                                                                    Displays user pronouns from <a href="https://pr.alejo.io" target="_blank" style={{ color: '#fff', "font-weight": 700 }}>Alejo.io</a>.
-                                                                                </Typography>
-                                                                                <Box sx={{ mt: 2, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(228, 3, 3, 0.12), rgba(255, 140, 0, 0.12), rgba(255, 237, 0, 0.12), rgba(0, 200, 80, 0.12), rgba(80, 120, 255, 0.12), rgba(180, 80, 255, 0.12))', border: '1px solid rgba(255,255,255,0.2)' }}>
-                                                                                    <FormControlLabel
-                                                                                        control={<Switch checked={pridePronouns()} onChange={(_, v) => setPridePronouns(v)} color="primary" />}
-                                                                                        label={
-                                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                                                <span style={{ "font-size": '1.1rem' }}>🏳️‍🌈</span>
-                                                                                                <Typography sx={{
-                                                                                                    fontWeight: 700,
-                                                                                                    fontSize: '0.9rem',
-                                                                                                    color: '#fff',
-                                                                                                    textShadow: '0 0 10px rgba(255, 140, 0, 0.5), 0 0 20px rgba(180, 80, 255, 0.3)'
-                                                                                                }}>
-                                                                                                    Pride Mode
-                                                                                                </Typography>
-                                                                                            </Box>
-                                                                                        }
-                                                                                    />
-                                                                                    <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.7)', pl: 4, mt: -0.5 }}>
-                                                                                        All pronoun badges become animated rainbow
-                                                                                    </Typography>
-                                                                                </Box>
-                                                                            </Show>
-                                                                        </Box>
-                                                                    </>
-                                                                </Show>
-                                                                <Show when={platform !== 'twitch'}>
-                                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                        No platform-specific settings in this section.
-                                                                    </Typography>
-                                                                </Show>
-                                                            </Box>
-                                                        )}
-                                                    </For>
-                                                </Stack>
-                                            </Show>
-
-                                            {/* Visuals */}
-                                            <Show when={activeTab() === 1}>
-                                                <Stack spacing={4}>
-                                                    <Box>
-                                                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Typography</Typography>
-                                                        <Box sx={{ mb: 3 }}>
-                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                                                <Typography variant="body2" color="text.secondary">Font Size</Typography>
-                                                                <Typography variant="body2" fontWeight={600}>{fontSize()}px</Typography>
-                                                            </Box>
-                                                            <GradientSlider min={12} max={48} value={fontSize()} onChange={setFontSize} />
-                                                        </Box>
-
-                                                        <FormControlLabel
-                                                            control={<Switch checked={useCustomFont()} onChange={(_, v) => setUseCustomFont(v)} size="small" />}
-                                                            label={<Typography variant="body2">Use Custom Font</Typography>}
-                                                        />
-                                                        <Show when={useCustomFont()}>
-                                                            <TextField
-                                                                fullWidth size="small" placeholder="Font Family Name"
-                                                                value={customFont()} onChange={(e) => setCustomFont(e.target.value)}
-                                                                sx={{ mt: 1, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)' } }}
-                                                            />
-                                                        </Show>
-                                                        <Show when={!useCustomFont()}>
-                                                            <select
-                                                                value={selectedFont()}
-                                                                onChange={(e) => setSelectedFont(e.currentTarget.value)}
-                                                                style={{
-                                                                    width: '100%', padding: '10px', "margin-top": '8px',
-                                                                    background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', "border-radius": '8px', color: '#fff', outline: 'none'
-                                                                }}
-                                                            >
-                                                                <For each={PRESET_FONTS}>{(f) => <option value={f.value} style={{ background: '#09090b' }}>{f.name}</option>}</For>
-                                                            </select>
-                                                        </Show>
-                                                    </Box>
-
-                                                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-
-                                                    <Box>
-                                                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Elements</Typography>
-                                                        <Stack spacing={2}>
-                                                            <For each={sectionPlatforms()}>
-                                                                {(platform) => (
-                                                                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
-                                                                            {renderPlatformLabel(platform)}
-                                                                        </Typography>
-                                                                        <Show when={platform === 'twitch' || platform === 'kick' || platform === 'youtube' || platform === 'velora'}>
-                                                                            <>
-                                                                                <Show when={platform === 'twitch' || platform === 'kick'}>
-                                                                                    <FormControlLabel control={<Switch checked={showBadges()} onChange={(_, v) => setShowBadges(v)} color="secondary" />} label="Subscriber Badges" />
-                                                                                </Show>
-                                                                                <Show when={platform === 'twitch' || platform === 'kick' || platform === 'youtube'}>
-                                                                                    <FormControlLabel control={<Switch checked={showNamePaints()} onChange={(_, v) => setShowNamePaints(v)} color="secondary" />} label="7TV Name Paints" />
-                                                                                </Show>
-                                                                                <Show when={platform === 'twitch'}>
-                                                                                    <FormControlLabel control={<Switch checked={showRoomState()} onChange={(_, v) => setShowRoomState(v)} color="secondary" />} label="Show Room State" />
-                                                                                </Show>
-
-                                                                                <Box sx={{ pt: 1 }}>
-                                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                                                                        <FormControlLabel control={<Switch checked={showEmotes()} onChange={(_, v) => setShowEmotes(v)} color="secondary" />} label="Emotes" />
-                                                                                        <Show when={showEmotes()}>
-                                                                                            <Typography variant="caption" sx={{ bgcolor: 'rgba(255,255,255,0.1)', px: 1, py: 0.5, borderRadius: 1 }}>{emoteScale().toFixed(1)}x Scale</Typography>
-                                                                                        </Show>
-                                                                                    </Box>
-                                                                                    <Show when={showEmotes()}>
-                                                                                        <GradientSlider min={0.5} max={4.0} step={0.1} value={emoteScale()} onChange={setEmoteScale} />
-                                                                                    </Show>
-                                                                                </Box>
-                                                                            </>
-                                                                        </Show>
-                                                                        <Show when={platform === 'youtube'}>
-                                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                                YouTube supports 7TV emotes and paints.
-                                                                            </Typography>
-                                                                        </Show>
-                                                                        <Show when={platform === 'velora'}>
-                                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                                Velora supports native emotes.
-                                                                            </Typography>
-                                                                        </Show>
-                                                                    </Box>
-                                                                )}
-                                                            </For>
-                                                        </Stack>
-                                                    </Box>
-                                                </Stack>
-                                            </Show>
-
-                                            {/* Safety */}
-                                            <Show when={activeTab() === 2}>
-                                                <Stack spacing={3}>
-                                                    <Box>
-                                                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>Clutter Control</Typography>
-                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                                                            Keep your overlay clean and readable.
-                                                        </Typography>
-
-                                                        <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', mb: 3 }}>
-                                                            <FormControlLabel control={<Switch checked={fadeOutMessages()} onChange={(_, v) => setFadeOutMessages(v)} color="primary" />} label="Fade Out Old Messages" />
-                                                            <Show when={fadeOutMessages()}>
-                                                                <Box sx={{ mt: 2 }}>
-                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                                                        <Typography variant="caption" color="text.secondary">Disappear after</Typography>
-                                                                        <Typography variant="caption" fontWeight={600}>{fadeOutDelay()} seconds</Typography>
-                                                                    </Box>
-                                                                    <GradientSlider min={5} max={120} step={5} value={fadeOutDelay()} onChange={setFadeOutDelay} />
-                                                                </Box>
-                                                            </Show>
-                                                        </Box>
-
-                                                        <Typography gutterBottom variant="body2">Max Messages On Screen: {maxMessages()}</Typography>
-                                                        <GradientSlider min={5} max={100} value={maxMessages()} onChange={setMaxMessages} />
-                                                    </Box>
-
-                                                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-
-                                                    <Box>
-                                                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Filter</Typography>
-                                                        <Stack spacing={2}>
-                                                            <For each={sectionPlatforms()}>
-                                                                {(platform) => (
-                                                                    <Box sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                <Typography variant="subtitle2" sx={{ mb: 1, color: 'rgba(255,255,255,0.7)' }}>
-                                                                    {renderPlatformLabel(platform)}
-                                                                </Typography>
-                                                                        <Show when={platform === 'twitch' || platform === 'kick' || platform === 'velora'}>
-                                                                            <>
-                                                                                <TextField
-                                                                                    fullWidth size="small"
-                                                                                    label="Block Users (comma separated)"
-                                                                                    placeholder="user1, user2"
-                                                                                    value={blockedUsers()}
-                                                                                    onChange={(e) => setBlockedUsers(e.target.value)}
-                                                                                    sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)' } }}
-                                                                                />
-                                                                                <TextField
-                                                                                    fullWidth size="small"
-                                                                                    label="Hide Custom Bots (comma separated)"
-                                                                                    placeholder="bot1, bot2"
-                                                                                    value={customBots()}
-                                                                                    onChange={(e) => setCustomBots(e.target.value)}
-                                                                                    sx={{ mt: 2, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(0,0,0,0.2)' } }}
-                                                                                />
-                                                                                <Box sx={{ mt: 2 }}>
-                                                                                    <FormControlLabel control={<Switch checked={hideCommands()} onChange={(_, v) => setHideCommands(v)} color="error" />} label="Hide !commands (Exclamations)" />
-                                                                                    <FormControlLabel control={<Switch checked={hideBots()} onChange={(_, v) => setHideBots(v)} color="error" />} label="Hide Common Bots (Streamelements, etc)" />
-                                                                                </Box>
-                                                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                                    These filters apply across all platforms.
-                                                                                </Typography>
-                                                                            </>
-                                                                        </Show>
-                                                                        <Show when={platform === 'youtube'}>
-                                                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                                                No filters available for YouTube yet.
-                                                                            </Typography>
-                                                                        </Show>
-                                                                    </Box>
-                                                                )}
-                                                            </For>
-                                                        </Stack>
-                                                    </Box>
-                                                </Stack>
-                                            </Show>
-
-                                        </Paper>
-                                    </Box>
-
-                                    {/* URL Generator */}
-                                    <Show when={getPrimaryChannel()}>
-                                        <Paper class="glass-panel" sx={{ p: 3, background: 'rgba(0,0,0,0.3) !important', borderColor: '#F472B6 !important' }}>
-                                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, background: 'linear-gradient(to right, #F472B6, #C084FC)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                                                Your Overlay URL
-                                            </Typography>
-
-                                            <Box sx={{ p: 2, bgcolor: '#0f0c29', borderRadius: 2, border: '1px solid rgba(255,255,255,0.1)', mb: 1, fontFamily: 'monospace', fontSize: '0.8rem', color: '#2DD4BF', wordBreak: 'break-all' }}>
-                                                {generateUrl()}
-                                            </Box>
-                                            <Typography variant="caption" sx={{ display: 'block', mb: 3, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
-                                                Recommended Resolution: 450x800 (Included in drag data)
-                                            </Typography>
-
-                                            <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-                                                <Button
-                                                    variant="contained"
-                                                    fullWidth
-                                                    onClick={handleCopy}
-                                                    startIcon={copied() ? <CheckCircleIcon /> : <ContentCopyIcon />}
-                                                    sx={{ bgcolor: copied() ? '#10B981' : '#F472B6', '&:hover': { bgcolor: copied() ? '#059669' : '#DB2777' } }}
-                                                >
-                                                    {copied() ? 'Copied URL' : 'Copy URL'}
-                                                </Button>
-                                                <Button
-                                                    variant="outlined"
-                                                    fullWidth
-                                                    onClick={handleOpen}
-                                                    startIcon={<OpenInNewIcon />}
-                                                    sx={{ borderColor: 'rgba(255,255,255,0.3)', color: '#fff', '&:hover': { borderColor: '#fff' } }}
-                                                >
-                                                    Open
-                                                </Button>
-                                            </Stack>
-
-                                            <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', pt: 2, textAlign: 'center' }}>
-                                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', mb: 1, display: 'block' }}>
-                                                    Or drag to OBS
-                                                </Typography>
-                                                <a
-                                                    href={generateUrl()}
-                                                    draggable={true}
-                                                    onDragStart={(e) => {
-                                                        if (e.dataTransfer) {
-                                                            const urlStr = generateUrl();
-                                                            const urlObj = new URL(urlStr);
-                                                            urlObj.searchParams.set("layer-width", "450");
-                                                            urlObj.searchParams.set("layer-height", "800");
-                                                            const url = urlObj.toString();
-
-                                                            e.dataTransfer.setData("text/plain", url);
-                                                            e.dataTransfer.setData("text/uri-list", url);
-                                                            e.dataTransfer.setData("text/html", `<a href="${url}">Kroma Chat</a>`);
-                                                            e.dataTransfer.setData("text/x-moz-url", `${url}\nKroma Chat`);
-                                                            const img = new Image();
-                                                            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                                            e.dataTransfer.setDragImage(img, 0, 0);
-                                                        }
-                                                    }}
-                                                    style={{ "text-decoration": 'none', display: 'inline-block' }}
-                                                    onClick={(e) => e.preventDefault()}
-                                                >
-                                                    <Button
-                                                        startIcon={<DragIndicatorIcon />}
-                                                        sx={{
-                                                            color: 'rgba(255,255,255,0.8)',
-                                                            cursor: 'grab',
-                                                            '&:hover': { background: 'rgba(255,255,255,0.05)', color: '#fff' }
-                                                        }}
-                                                    >
-                                                        Drag Me to OBS
-                                                    </Button>
-                                                </a>
-                                            </Box>
-                                        </Paper>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </Show>
 
-                                </Stack>
-                            </Grid>
+                                    <Show when={platformTab() === 'combined'}>
+                                        <div class="space-y-3">
+                                            <div class="rounded-md border border-slate-900 bg-black/50 px-3 py-2 text-xs text-slate-400">
+                                                Combine multiple platforms into one overlay. Toggle the platforms you want, then add the channel for each.
+                                            </div>
+                                            <For each={[
+                                                { id: 'twitch', label: 'Twitch', color: 'text-purple-300', prefix: 'twitch.tv/' },
+                                                { id: 'kick', label: 'Kick', color: 'text-emerald-300', prefix: 'kick.com/' },
+                                                { id: 'youtube', label: 'YouTube', color: 'text-red-300', prefix: 'youtube.com/@' },
+                                                { id: 'velora', label: 'Velora', color: 'text-amber-300', prefix: 'velora.tv/' },
+                                            ]}>
+                                                {(entry) => {
+                                                    const enabled = () => combinedPlatforms().includes(entry.id as Platform);
+                                                    return (
+                                                        <div class="rounded-md border border-slate-800 p-3">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="flex items-center gap-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={enabled()}
+                                                                        onChange={() => toggleCombinedPlatform(entry.id as Platform)}
+                                                                        class="h-4 w-4 accent-cyan-400"
+                                                                    />
+                                                                    <span class={"text-sm font-semibold " + entry.color}>{entry.label}</span>
+                                                                </div>
+                                                                <span class="text-xs text-slate-500">{entry.prefix}</span>
+                                                            </div>
+                                                            <div class="mt-2">
+                                                                <Input
+                                                                    placeholder={`${entry.label.toLowerCase()}_username`}
+                                                                    value={getChannelForPlatform(entry.id as Platform)}
+                                                                    onInput={(e) => setChannelForPlatform(entry.id as Platform, sanitizeChannel(e.currentTarget.value, entry.id as Platform))}
+                                                                    disabled={!enabled()}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }}
+                                            </For>
+                                        </div>
+                                    </Show>
+                                </CardContent>
+                            </Card>
 
-                            {/* Preview Column */}
-                            <Grid item xs={12} lg={8}>
-                                <Box sx={{ position: { lg: 'sticky' }, top: { lg: 40 }, height: { lg: 'calc(100vh - 80px)' } }}>
-                                    <Paper class="glass-panel" sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <div class="space-y-4">
+                                <div class="inline-flex flex-wrap gap-2 rounded-lg border border-slate-900 bg-black/60 p-1">
+                                    {[
+                                        { label: 'Core', index: 0 },
+                                        { label: 'Visuals', index: 1 },
+                                        { label: 'Safety', index: 2 },
+                                    ].map((tab) => (
+                                        <button
+                                            class={`rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${activeTab() === tab.index ? 'bg-white text-black' : 'text-slate-400 hover:bg-slate-900/60 hover:text-white'}`}
+                                            onClick={() => setActiveTab(tab.index)}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
 
-                                        {/* Preview Header */}
-                                        <Box sx={{ p: 2, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'rgba(0,0,0,0.2)' }}>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, color: 'rgba(255,255,255,0.8)' }}>
-                                                <VisibilityIcon sx={{ fontSize: 18, color: '#2DD4BF' }} />
-                                                Live Preview
-                                            </Typography>
-                                            <Stack direction="row" spacing={1}>
-                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#EF4444' }} />
-                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#F59E0B' }} />
-                                                <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#10B981' }} />
-                                            </Stack>
-                                        </Box>
-
-                                        {/* Iframe */}
-                                        <Box sx={{ flex: 1, position: 'relative', bgcolor: '#000' }}>
-                                            <Show when={previewUrl()} fallback={
-                                                <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, color: 'rgba(255,255,255,0.2)' }}>
-                                                    <Typography variant="h6">Enter channel to preview</Typography>
-                                                </Box>
-                                            }>
-                                                <iframe
-                                                    src={previewUrl()}
-                                                    style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
-                                                    allow="autoplay"
-                                                />
+                                <Show when={activeTab() === 0}>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Chat Basics</CardTitle>
+                                            <CardDescription>Core overlay behavior across platforms.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent class="space-y-3">
+                                            <div class="flex items-center justify-between">
+                                                <Label>Platform Badge</Label>
+                                                <Switch checked={showPlatformBadge()} onChange={setShowPlatformBadge} />
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <Label>Timestamps</Label>
+                                                <Switch checked={showTimestamps()} onChange={setShowTimestamps} />
+                                            </div>
+                                            <Show when={hasPlatform('twitch')}>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Shared Chat</Label>
+                                                    <Switch checked={showSharedChat()} onChange={setShowSharedChat} />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Replies</Label>
+                                                    <Switch checked={showReplies()} onChange={setShowReplies} />
+                                                </div>
+                                                <div class="rounded-md border border-slate-800 p-3">
+                                                    <div class="flex items-center justify-between">
+                                                        <Label>Pronouns</Label>
+                                                        <Switch checked={showPronouns()} onChange={setShowPronouns} />
+                                                    </div>
+                                                    <Show when={showPronouns()}>
+                                                        <div class="mt-2 flex items-center justify-between">
+                                                            <Label>Pride Mode</Label>
+                                                            <Switch checked={pridePronouns()} onChange={setPridePronouns} />
+                                                        </div>
+                                                    </Show>
+                                                </div>
                                             </Show>
+                                        </CardContent>
+                                    </Card>
+                                </Show>
 
-                                            {/* Checkerboard for transparency */}
-                                            <Box sx={{
-                                                position: 'absolute', inset: 0, zIndex: -1,
-                                                backgroundImage: `linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)`,
-                                                backgroundSize: '20px 20px',
-                                                opacity: 0.3
-                                            }} />
-                                        </Box>
+                                <Show when={activeTab() === 1}>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Visual Style</CardTitle>
+                                            <CardDescription>Fonts, emotes, and overlay visuals.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent class="space-y-4">
+                                            <div>
+                                                <div class="flex items-center justify-between text-sm text-slate-400">
+                                                    <span>Font Size</span>
+                                                    <span class="text-slate-200">{fontSize()}px</span>
+                                                </div>
+                                                <GradientSlider min={12} max={48} value={fontSize()} onChange={setFontSize} />
+                                            </div>
 
-                                    </Paper>
-                                </Box>
-                            </Grid>
-                        </Grid>
-                    </Container>
+                                            <div class="space-y-2">
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Custom Font</Label>
+                                                    <Switch checked={useCustomFont()} onChange={setUseCustomFont} />
+                                                </div>
+                                                <Show when={useCustomFont()}>
+                                                    <Input
+                                                        placeholder="Font Family Name"
+                                                        value={customFont()}
+                                                        onInput={(e) => setCustomFont(e.currentTarget.value)}
+                                                    />
+                                                </Show>
+                                                <Show when={!useCustomFont()}>
+                                                    <select
+                                                        value={selectedFont()}
+                                                        onChange={(e) => setSelectedFont(e.currentTarget.value)}
+                                                        class="w-full rounded-md border border-slate-800 bg-black/60 px-3 py-2 text-sm text-slate-100"
+                                                    >
+                                                        <For each={PRESET_FONTS}>{(f) => <option value={f.value}>{f.name}</option>}</For>
+                                                    </select>
+                                                </Show>
+                                            </div>
 
-                    <Box sx={{ py: 3, textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(9, 9, 11, 0.4)' }}>
-                        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' }}>
-                            Made with 💜 by <a href="https://www.twitch.tv/scaptiq" target="_blank" style={{ color: '#F472B6', "text-decoration": 'none', "font-weight": 600 }}>scaptiq</a> • Inspired by <a href="https://github.com/IS2511/ChatIS" target="_blank" style={{ color: '#2DD4BF', "text-decoration": 'none', "font-weight": 600 }}>ChatIS</a>
-                        </Typography>
-                    </Box>
-                </Box>
-            </ThemeProvider>
-        </>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Subscriber Badges</Label>
+                                                    <Switch checked={showBadges()} onChange={setShowBadges} />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Name Paints</Label>
+                                                    <Switch checked={showNamePaints()} onChange={setShowNamePaints} />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Room State</Label>
+                                                    <Switch checked={showRoomState()} onChange={setShowRoomState} />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Emotes</Label>
+                                                    <Switch checked={showEmotes()} onChange={setShowEmotes} />
+                                                </div>
+                                            </div>
+
+                                            <Show when={showEmotes()}>
+                                                <div>
+                                                    <div class="flex items-center justify-between text-sm text-slate-400">
+                                                        <span>Emote Scale</span>
+                                                        <span class="text-slate-200">{emoteScale().toFixed(1)}x</span>
+                                                    </div>
+                                                    <GradientSlider min={0.5} max={4.0} step={0.1} value={emoteScale()} onChange={setEmoteScale} />
+                                                </div>
+                                            </Show>
+                                        </CardContent>
+                                    </Card>
+                                </Show>
+
+                                <Show when={activeTab() === 2}>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Safety & Clutter</CardTitle>
+                                            <CardDescription>Keep the overlay readable.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent class="space-y-4">
+                                            <div class="flex items-center justify-between">
+                                                <Label>Fade Out Messages</Label>
+                                                <Switch checked={fadeOutMessages()} onChange={setFadeOutMessages} />
+                                            </div>
+                                            <Show when={fadeOutMessages()}>
+                                                <div>
+                                                    <div class="flex items-center justify-between text-sm text-slate-400">
+                                                        <span>Disappear after</span>
+                                                        <span class="text-slate-200">{fadeOutDelay()}s</span>
+                                                    </div>
+                                                    <GradientSlider min={5} max={120} step={5} value={fadeOutDelay()} onChange={setFadeOutDelay} />
+                                                </div>
+                                            </Show>
+                                            <div>
+                                                <div class="flex items-center justify-between text-sm text-slate-400">
+                                                    <span>Max Messages</span>
+                                                    <span class="text-slate-200">{maxMessages()}</span>
+                                                </div>
+                                                <GradientSlider min={5} max={100} value={maxMessages()} onChange={setMaxMessages} />
+                                            </div>
+                                            <div class="space-y-2">
+                                                <Input
+                                                    placeholder="Block Users (comma separated)"
+                                                    value={blockedUsers()}
+                                                    onInput={(e) => setBlockedUsers(e.currentTarget.value)}
+                                                />
+                                                <Input
+                                                    placeholder="Hide Custom Bots (comma separated)"
+                                                    value={customBots()}
+                                                    onInput={(e) => setCustomBots(e.currentTarget.value)}
+                                                />
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Hide !commands</Label>
+                                                    <Switch checked={hideCommands()} onChange={setHideCommands} />
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <Label>Hide Common Bots</Label>
+                                                    <Switch checked={hideBots()} onChange={setHideBots} />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Show>
+                            </div>
+                        </section>
+
+                        <section class="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Overlay URL</CardTitle>
+                                    <CardDescription>Copy or open the overlay link.</CardDescription>
+                                </CardHeader>
+                                <CardContent class="space-y-3">
+                                    <div class="rounded-md border border-slate-800 bg-black/60 p-3 text-xs text-cyan-300">
+                                        {generateUrl()}
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <Button onClick={handleCopy}>{copied() ? 'Copied' : 'Copy URL'}</Button>
+                                        <Button variant="outline" onClick={handleOpen}>Open</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <div class="h-px bg-slate-900/80" />
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Live Preview</CardTitle>
+                                    <CardDescription>See your overlay changes instantly.</CardDescription>
+                                </CardHeader>
+                                <CardContent class="h-[560px] p-0">
+                                    <Show when={previewUrl()} fallback={
+                                        <div class="flex h-full items-center justify-center text-sm text-slate-500">
+                                            Enter a channel to preview
+                                        </div>
+                                    }>
+                                        <iframe
+                                            src={previewUrl()}
+                                            class="h-full w-full rounded-b-lg"
+                                            style={{ border: 'none', background: 'transparent' }}
+                                            allow="autoplay"
+                                        />
+                                    </Show>
+                                </CardContent>
+                            </Card>
+                        </section>
+                    </main>
+
+                    <footer class="mx-auto max-w-6xl px-6 pb-10 text-xs text-slate-500">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-900 pt-4">
+                            <span>
+                                Created by <a class="text-slate-300 hover:text-white" href="https://github.com/scaptiq" target="_blank">scaptiq</a>.
+                            </span>
+                            <span>
+                                Inspired by <a class="text-slate-300 hover:text-white" href="https://github.com/IS2511/ChatIS" target="_blank">ChatIS</a> by IS2511. Licensed MIT.
+                            </span>
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        </div>
     );
 }

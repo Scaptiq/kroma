@@ -24,7 +24,7 @@ export default function Root() {
       mode: "dark",
     },
     typography: {
-      fontFamily: '"Segoe UI", "Inter", "Roboto", sans-serif',
+      fontFamily: '"Space Grotesk", "Inter", "Segoe UI", sans-serif',
     }
   });
 

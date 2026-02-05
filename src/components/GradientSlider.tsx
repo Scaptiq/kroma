@@ -1,5 +1,4 @@
 import { createSignal } from "solid-js";
-import { Box } from "@suid/material";
 
 interface GradientSliderProps {
     value: number;
@@ -13,7 +12,6 @@ export default function GradientSlider(props: GradientSliderProps) {
     let trackRef: HTMLDivElement | undefined;
     const [dragging, setDragging] = createSignal(false);
 
-    // Calculate percent for display
     const percent = () => {
         const p = ((props.value - props.min) / (props.max - props.min)) * 100;
         return Math.min(Math.max(p, 0), 100);
@@ -46,69 +44,33 @@ export default function GradientSlider(props: GradientSliderProps) {
             newVal = Math.round(newVal / props.step) * props.step;
         }
 
-        // Handle floating point precision issues
         if (props.step && props.step < 1) {
             newVal = parseFloat(newVal.toFixed(1));
         } else {
             newVal = Math.round(newVal);
         }
 
-        // Clamp just in case
         newVal = Math.min(Math.max(newVal, props.min), props.max);
-
         props.onChange(newVal);
     };
 
     return (
-        <Box
+        <div
             ref={trackRef}
             onPointerDown={handlePointerDown}
-            sx={{
-                position: 'relative',
-                width: '100%',
-                height: 24, // Touch target height
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                touchAction: 'none',
-                userSelect: 'none'
-            }}
+            class="relative flex h-6 w-full cursor-pointer select-none items-center"
+            style={{ "touch-action": "none" }}
         >
-            {/* Background Track */}
-            <Box sx={{
-                width: '100%',
-                height: 6,
-                borderRadius: 99,
-                background: 'rgba(255,255,255,0.1)',
-                position: 'relative',
-            }}>
-                {/* Fill Gradient */}
-                <Box sx={{
-                    width: `${percent()}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #F472B6, #C084FC, #2DD4BF)',
-                    borderRadius: 99,
-                    transition: dragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: '0 0 10px rgba(192, 132, 252, 0.4)'
-                }} />
-            </Box>
-
-            {/* Thumb */}
-            <Box sx={{
-                position: 'absolute',
-                left: `${percent()}%`,
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                background: '#fff',
-                transform: 'translate(-50%, 0)',
-                boxShadow: '0 0 15px rgba(255,255,255,0.6)',
-                transition: dragging() ? 'none' : 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                zIndex: 2,
-                '&:hover': {
-                    transform: 'translate(-50%, 0) scale(1.2)'
-                }
-            }} />
-        </Box>
+            <div class="h-1.5 w-full rounded-full bg-slate-800">
+                <div
+                    class="h-full rounded-full bg-gradient-to-r from-sky-400 via-slate-200 to-slate-50"
+                    style={{ width: `${percent()}%`, transition: dragging() ? 'none' : 'width 0.2s ease' }}
+                />
+            </div>
+            <div
+                class="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow"
+                style={{ left: `${percent()}%`, transform: 'translate(-50%, -50%)', transition: dragging() ? 'none' : 'left 0.2s ease' }}
+            />
+        </div>
     );
 }

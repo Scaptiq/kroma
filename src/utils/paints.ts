@@ -45,6 +45,7 @@ function decodePaintColor(color: number | string): { r: number; g: number; b: nu
             if (hex.length === 8) {
                 const value = parseInt(hex, 16);
                 if (!Number.isNaN(value)) {
+                    // 7TV encodes hex as RRGGBBAA
                     return {
                         r: (value >> 24) & 0xff,
                         g: (value >> 16) & 0xff,
@@ -64,6 +65,7 @@ function decodePaintColor(color: number | string): { r: number; g: number; b: nu
     }
 
     const unsigned = (color as number) >>> 0;
+    // 7TV encodes colors as RGBA in a signed 32-bit integer
     const r = (unsigned >>> 24) & 0xff;
     const g = (unsigned >> 16) & 0xff;
     const b = (unsigned >> 8) & 0xff;
@@ -78,9 +80,6 @@ function colorToCss(color: { r: number; g: number; b: number; a: number }): stri
     return `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 }
 
-function toOpaque(color: { r: number; g: number; b: number; a: number }) {
-    return { ...color, a: 1 };
-}
 
 function formatStopPosition(value: number | undefined): number {
     if (value === undefined || Number.isNaN(value)) return 0;
@@ -92,7 +91,13 @@ function formatStopPosition(value: number | undefined): number {
 /**
  * Fetch all global paints from 7TV GraphQL API
  */
-async function fetchGlobalPaints(): Promise<Map<string, any>> {
+async function fetchGlobalPaints(force = false): Promise<Map<string, any>> {
+    if (force) {
+        globalPaintsCache = null;
+        paintsFetchPromise = null;
+        globalPaintsFetchedAt = 0;
+    }
+
     if (globalPaintsCache && Date.now() - globalPaintsFetchedAt < GLOBAL_PAINT_TTL) {
         return globalPaintsCache;
     }
@@ -147,7 +152,7 @@ function paintToCSS(paint: any): NamePaint | null {
     // Handle solid color
     if (paint.color !== undefined && paint.color !== null) {
         const color = decodePaintColor(paint.color);
-        result.color = colorToCss(toOpaque(color));
+        result.color = colorToCss(color);
     }
 
     const isRepeating = Boolean(paint.repeat);
@@ -160,7 +165,7 @@ function paintToCSS(paint: any): NamePaint | null {
         result.backgroundPosition = 'center';
     } else if (paint.stops && Array.isArray(paint.stops) && paint.stops.length > 0) {
         const gradientStops = paint.stops.map((stop: any) => {
-            const color = colorToCss(toOpaque(decodePaintColor(stop.color)));
+            const color = colorToCss(decodePaintColor(stop.color));
             const position = formatStopPosition(stop.at);
             return `${color} ${position}%`;
         }).join(', ');
@@ -188,7 +193,7 @@ function paintToCSS(paint: any): NamePaint | null {
     // Handle shadows/drop shadows
     if (paint.shadows && Array.isArray(paint.shadows) && paint.shadows.length > 0) {
         const shadows = paint.shadows.map((shadow: any) => {
-            const color = colorToCss(toOpaque(decodePaintColor(shadow.color)));
+            const color = colorToCss(decodePaintColor(shadow.color));
             const x = shadow.x_offset || 0;
             const y = shadow.y_offset || 0;
             const blur = shadow.radius || 0;
@@ -221,19 +226,34 @@ export async function get7TVUserPaint(
     const promise = (async () => {
         try {
             // Ensure global paints are loaded
-            const allPaints = await fetchGlobalPaints();
+            let allPaints = await fetchGlobalPaints();
 
             // Fetch user data
-            const res = await fetch(`https://7tv.io/v3/users/${platform}/${userId}`);
-            if (!res.ok) {
+            const fetchUser = async (identifier: string) => {
+                if (!identifier) return null;
+                const res = await fetch(`https://7tv.io/v3/users/${platform}/${identifier}`);
+                if (!res.ok) return null;
+                return res.json();
+            };
+
+            const data = await fetchUser(userId);
+
+            if (!data) {
                 userPaintCache.set(cacheKey, { value: null, fetchedAt: Date.now() });
                 return null;
             }
 
-            const data = await res.json();
-
             // Check for paint_id in user.style
-            const paintId = data.user?.style?.paint_id;
+            const paintId =
+                data?.user?.style?.paint_id ??
+                data?.user?.style?.paint?.id ??
+                data?.style?.paint_id ??
+                data?.style?.paint?.id;
+
+            if (paintId && !allPaints.has(paintId)) {
+                allPaints = await fetchGlobalPaints(true);
+            }
+
             if (paintId && allPaints.has(paintId)) {
                 const paintData = allPaints.get(paintId);
                 const paint = paintToCSS(paintData);
@@ -242,11 +262,16 @@ export async function get7TVUserPaint(
             }
 
             // Fallback: check for solid color in user.style
-            if (data.user?.style?.color !== undefined && data.user?.style?.color !== null) {
+            const fallbackColor =
+                data?.user?.style?.color ??
+                data?.style?.color ??
+                data?.user?.style?.paint?.color;
+
+            if (fallbackColor !== undefined && fallbackColor !== null) {
                 const result: NamePaint = {
                     id: 'solid-color',
                     name: 'Solid Color',
-                    color: colorToCss(toOpaque(decodePaintColor(data.user.style.color)))
+                    color: colorToCss(decodePaintColor(fallbackColor))
                 };
                 userPaintCache.set(cacheKey, { value: result, fetchedAt: Date.now() });
                 return result;
@@ -289,11 +314,9 @@ export function getNamePaintStyles(paint: NamePaint | null): {
     if (paint.backgroundImage) {
         // Use background-clip for gradient or image text
         style['background-image'] = paint.backgroundImage;
-        if (paint.backgroundSize || paint.backgroundPosition || paint.repeat) {
-            style['background-size'] = paint.backgroundSize || 'cover';
-            style['background-position'] = paint.backgroundPosition || 'center';
-            style['background-repeat'] = paint.repeat ? 'repeat' : 'no-repeat';
-        }
+        style['background-size'] = paint.backgroundSize || '100% 100%';
+        style['background-position'] = paint.backgroundPosition || 'center';
+        style['background-repeat'] = paint.repeat ? 'repeat' : 'no-repeat';
         style['display'] = 'inline-block';
         style['background-clip'] = 'text';
         style['-webkit-background-clip'] = 'text';
