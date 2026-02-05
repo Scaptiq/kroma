@@ -54,7 +54,7 @@ body {
 .chat-message {
     position: relative;
     padding: 0.6rem 0.8rem;
-    background: transparent;
+    background: rgba(10, 10, 12, var(--message-bg-alpha, 0));
     /* backdrop-filter: blur(8px); */
     /* -webkit-backdrop-filter: blur(8px); */
     border-radius: 12px;

@@ -61,6 +61,8 @@ export default function ChatSetup() {
     const [showNamePaints, setShowNamePaints] = createSignal(true);
     const [showRoomState, setShowRoomState] = createSignal(false);
     const [showReplies, setShowReplies] = createSignal(true);
+    const [pageBackground, setPageBackground] = createSignal<'transparent' | 'dim' | 'dark'>('transparent');
+    const [messageBgOpacity, setMessageBgOpacity] = createSignal(0);
     const [hideCommands, setHideCommands] = createSignal(false);
     const [hideBots, setHideBots] = createSignal(false);
     const [maxMessages, setMaxMessages] = createSignal(50);
@@ -212,6 +214,8 @@ export default function ChatSetup() {
         if (blockedUsers().trim()) params.set('blocked', blockedUsers().trim());
         if (customBots().trim()) params.set('bots', customBots().trim());
         if (pridePronouns()) params.set('pridePronouns', 'true');
+        if (pageBackground() !== 'transparent') params.set('bg', pageBackground());
+        if (messageBgOpacity() > 0) params.set('msgBg', messageBgOpacity().toFixed(2));
 
         const queryString = params.toString();
         setPreviewUrl(`/chat/${primaryChannel}?${queryString}`);
@@ -255,6 +259,8 @@ export default function ChatSetup() {
         if (customBots().trim()) url.searchParams.set('bots', customBots().trim());
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') url.searchParams.set('font', font);
+        if (pageBackground() !== 'transparent') url.searchParams.set('bg', pageBackground());
+        if (messageBgOpacity() > 0) url.searchParams.set('msgBg', messageBgOpacity().toFixed(2));
         return url.toString();
     };
 
@@ -519,6 +525,32 @@ export default function ChatSetup() {
                                                     <GradientSlider min={0.5} max={4.0} step={0.1} value={emoteScale()} onChange={setEmoteScale} />
                                                 </div>
                                             </Show>
+
+                                            <div class="border-t border-slate-900 pt-4">
+                                                <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Background</div>
+                                                <div class="mt-3 space-y-3">
+                                                    <div class="space-y-2">
+                                                        <Label>Page Background</Label>
+                                                        <select
+                                                            value={pageBackground()}
+                                                            onChange={(e) => setPageBackground(e.currentTarget.value as 'transparent' | 'dim' | 'dark')}
+                                                            class="w-full rounded-md border border-slate-800 bg-black/60 px-3 py-2 text-sm text-slate-100"
+                                                        >
+                                                            <option value="transparent">Transparent</option>
+                                                            <option value="dim">Dim</option>
+                                                            <option value="dark">Dark</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <div class="flex items-center justify-between text-sm text-slate-400">
+                                                            <span>Message Background</span>
+                                                            <span class="text-slate-200">{Math.round(messageBgOpacity() * 100)}%</span>
+                                                        </div>
+                                                        <GradientSlider min={0} max={0.9} step={0.05} value={messageBgOpacity()} onChange={setMessageBgOpacity} />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </Show>

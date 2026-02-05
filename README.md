@@ -148,6 +148,8 @@ For advanced users, you can configure the overlay via URL:
 | `font` | string | `Segoe UI` | Font family (Google Fonts supported) |
 | `fontSize` | number | `16` | Font size in pixels |
 | `maxMessages` | number | `50` | Max messages shown |
+| `bg` | string | `transparent` | Page background: `transparent`, `dim`, `dark` |
+| `msgBg` | number | `0` | Message background opacity (0–0.9) |
 | `hideCommands` | boolean | `false` | Hide `!command` messages |
 | `hideBots` | boolean | `false` | Hide known bots |
 | `blocked` | string | | Comma-separated blocked users |

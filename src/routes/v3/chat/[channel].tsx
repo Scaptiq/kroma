@@ -62,6 +62,8 @@ interface ChatConfig {
     blockedUsers: string[];
     customBots: string[];
     showRoomState: boolean;
+    pageBackground: 'transparent' | 'dim' | 'dark';
+    messageBgOpacity: number;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -91,6 +93,8 @@ const DEFAULT_CONFIG: ChatConfig = {
     blockedUsers: [],
     customBots: [],
     showRoomState: false,
+    pageBackground: 'transparent',
+    messageBgOpacity: 0,
 };
 
 // Known bot usernames
@@ -202,6 +206,12 @@ export default function Chat() {
 
         const fontFamilyRaw = searchParams.font || 'Segoe UI';
         const fontFamily = fontFamilyRaw.replace(/\+/g, ' ');
+        const pageBackgroundRaw = String(searchParams.bg || 'transparent').toLowerCase();
+        const pageBackground = pageBackgroundRaw === 'dark' || pageBackgroundRaw === 'dim' ? pageBackgroundRaw : 'transparent';
+        const messageBgOpacityRaw = parseFloat(String(searchParams.msgBg || '0'));
+        const messageBgOpacity = Number.isFinite(messageBgOpacityRaw)
+            ? Math.min(0.9, Math.max(0, messageBgOpacityRaw))
+            : 0;
 
         return {
             ...DEFAULT_CONFIG,
@@ -230,6 +240,8 @@ export default function Chat() {
             blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
             customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
             showRoomState: searchParams.roomState === 'true' && hasTwitch,
+            pageBackground,
+            messageBgOpacity,
         };
     });
 
@@ -240,6 +252,17 @@ export default function Chat() {
         if (platforms.includes('youtube') && youtubeConnected()) return true;
         if (platforms.includes('velora') && veloraConnected()) return true;
         return false;
+    });
+
+    createEffect(() => {
+        if (typeof document === 'undefined') return;
+        const bg = config().pageBackground;
+        const color = bg === 'dark'
+            ? 'rgba(8, 8, 10, 1)'
+            : bg === 'dim'
+                ? 'rgba(8, 8, 10, 0.6)'
+                : 'transparent';
+        document.body.style.backgroundColor = color;
     });
 
     // Scroll to bottom when new messages arrive
@@ -2354,7 +2377,8 @@ export default function Chat() {
                     "font-family": `"${config().fontFamily}", "Segoe UI", "Inter", sans-serif`,
                     "--emote-scale": config().emoteScale,
                     "--fade-delay": `${config().fadeOutDelay / 1000}s`,
-                    "--message-gap": `0.5rem`
+                    "--message-gap": `0.5rem`,
+                    "--message-bg-alpha": String(config().messageBgOpacity)
                 }}
             >
                 <ul
