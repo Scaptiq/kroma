@@ -52,6 +52,7 @@ interface ChatConfig {
     showNamePaints: boolean;
     showReplies: boolean;
     showFirstMessage: boolean;
+    playSound: boolean;
     maxMessages: number;
     hideCommands: boolean;
     hideBots: boolean;
@@ -85,6 +86,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     showNamePaints: true,
     showReplies: true,
     showFirstMessage: true,
+    playSound: false,
     maxMessages: 50,
     hideCommands: false,
     hideBots: false,
@@ -235,6 +237,7 @@ export default function Chat() {
             showTimestamps: searchParams.timestamps === 'true',
             showSharedChat: searchParams.shared !== 'false' && hasTwitch,
             showNamePaints: searchParams.paints !== 'false',
+            playSound: searchParams.sound === 'true',
             hideCommands: searchParams.hideCommands === 'true',
             hideBots: searchParams.hideBots === 'true',
             showReplies: searchParams.replies !== 'false' && hasTwitch,
@@ -287,6 +290,7 @@ export default function Chat() {
      * Add a system/event message (subs, raids, etc.)
      */
     const addSystemMessage = (msg: ChatMessage) => {
+        maybePlayMessageSound(msg.timestamp || Date.now());
         setMessages(prev => {
             const updated = [...prev, msg];
             if (updated.length > config().maxMessages) {
@@ -924,6 +928,8 @@ export default function Chat() {
         if (bits) messageType = 'cheer';
 
         const messageId = tags.id || crypto.randomUUID();
+        const timestamp = Date.now();
+        maybePlayMessageSound(timestamp);
         const badges = await getUserBadges(badgeSource, userId);
         const parsedContent = parseMessageContent(message, tags.emotes, bits, 'twitch');
 
@@ -945,7 +951,7 @@ export default function Chat() {
             content: message,
             parsedContent,
             color: tags.color || generateColor(username),
-            timestamp: Date.now(),
+            timestamp,
             type: messageType,
             isAction,
             isFirstMessage: isFirstMsg,
@@ -1247,6 +1253,7 @@ export default function Chat() {
             isShared: false
         };
 
+        maybePlayMessageSound(timestamp);
         setMessages(prev => {
             const updated = [...prev, newMessage];
             if (updated.length > config().maxMessages) {
@@ -1331,6 +1338,55 @@ export default function Chat() {
             minute: '2-digit',
             hour12: false
         });
+    };
+
+    let audioContext: AudioContext | null = null;
+    let lastSoundAt = 0;
+
+    const playMessageSound = () => {
+        if (!config().playSound) return;
+        const now = Date.now();
+        if (now - lastSoundAt < 150) return;
+        lastSoundAt = now;
+
+        try {
+            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!Ctx) return;
+            if (!audioContext) audioContext = new Ctx();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            const gain = audioContext.createGain();
+            const now = audioContext.currentTime;
+            const base = audioContext.createOscillator();
+            const overtone = audioContext.createOscillator();
+
+            base.type = 'sine';
+            overtone.type = 'sine';
+            base.frequency.setValueAtTime(880, now);
+            overtone.frequency.setValueAtTime(1320, now);
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+            base.connect(gain);
+            overtone.connect(gain);
+            gain.connect(audioContext.destination);
+
+            base.start(now);
+            overtone.start(now);
+            base.stop(now + 0.3);
+            overtone.stop(now + 0.3);
+        } catch {
+            // Ignore autoplay or audio context errors
+        }
+    };
+
+    const maybePlayMessageSound = (timestamp: number) => {
+        if (!config().playSound) return;
+        if (Date.now() - timestamp > 5000) return;
+        playMessageSound();
     };
 
     /**
@@ -1534,6 +1590,7 @@ export default function Chat() {
             isShared: false,
         };
 
+        maybePlayMessageSound(timestamp);
         setMessages(prev => {
             const updated = [...prev, newMessage];
             if (updated.length > config().maxMessages) {
@@ -1907,6 +1964,7 @@ export default function Chat() {
             effectColor,
         };
 
+        maybePlayMessageSound(timestamp);
         setMessages(prev => {
             const updated = [...prev, newMessage];
             if (updated.length > config().maxMessages) {

@@ -152,6 +152,7 @@ For advanced users, you can configure the overlay via URL:
 | `bg` | string | `transparent` | Page background: `transparent`, `dim`, `dark` |
 | `msgBg` | number | `0` | Message background opacity (0–0.9) |
 | `textColor` | string | `#ffffff` | Default text color (hex) |
+| `sound` | boolean | `false` | Play a sound on new messages |
 | `hideCommands` | boolean | `false` | Hide `!command` messages |
 | `hideBots` | boolean | `false` | Hide known bots |
 | `blocked` | string | | Comma-separated blocked users |

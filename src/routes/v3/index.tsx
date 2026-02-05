@@ -75,6 +75,7 @@ export default function ChatSetup() {
     const [fontSize, setFontSize] = createSignal(16);
     const [emoteScale, setEmoteScale] = createSignal(1.0);
     const [fadeOutMessages, setFadeOutMessages] = createSignal(false);
+    const [playSound, setPlaySound] = createSignal(false);
     const [fadeOutDelay, setFadeOutDelay] = createSignal(30);
     const [blockedUsers, setBlockedUsers] = createSignal("");
     const [customBots, setCustomBots] = createSignal("");
@@ -235,6 +236,7 @@ export default function ChatSetup() {
             params.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) params.set('fadeDelay', String(fadeOutDelay() * 1000));
         }
+        if (playSound()) params.set('sound', 'true');
         if (blockedUsers().trim()) params.set('blocked', blockedUsers().trim());
         if (customBots().trim()) params.set('bots', customBots().trim());
         if (pridePronouns()) params.set('pridePronouns', 'true');
@@ -282,6 +284,7 @@ export default function ChatSetup() {
             url.searchParams.set('fadeOut', 'true');
             if (fadeOutDelay() !== 30) url.searchParams.set('fadeDelay', String(fadeOutDelay() * 1000));
         }
+        if (playSound()) url.searchParams.set('sound', 'true');
         if (blockedUsers().trim()) url.searchParams.set('blocked', blockedUsers().trim());
         if (customBots().trim()) url.searchParams.set('bots', customBots().trim());
         const font = getEffectiveFont();
@@ -628,6 +631,10 @@ export default function ChatSetup() {
                                             <div class="flex items-center justify-between">
                                                 <Label>Fade Out Messages</Label>
                                                 <Switch checked={fadeOutMessages()} onChange={setFadeOutMessages} />
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <Label>Message Sound</Label>
+                                                <Switch checked={playSound()} onChange={setPlaySound} />
                                             </div>
                                             <Show when={fadeOutMessages()}>
                                                 <div>
