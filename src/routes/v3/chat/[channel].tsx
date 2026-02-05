@@ -46,6 +46,7 @@ interface ChatConfig {
     pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
     showBadges: boolean;
     showEmotes: boolean;
+    showHighlights: boolean;
     showTimestamps: boolean;
     showSharedChat: boolean;
     showNamePaints: boolean;
@@ -64,6 +65,7 @@ interface ChatConfig {
     showRoomState: boolean;
     pageBackground: 'transparent' | 'dim' | 'dark';
     messageBgOpacity: number;
+    textColor: string;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
@@ -77,6 +79,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     pridePronouns: false,  // Default to standard purple badges
     showBadges: true,
     showEmotes: true,
+    showHighlights: true,
     showTimestamps: false,
     showSharedChat: true,
     showNamePaints: true,
@@ -95,6 +98,7 @@ const DEFAULT_CONFIG: ChatConfig = {
     showRoomState: false,
     pageBackground: 'transparent',
     messageBgOpacity: 0,
+    textColor: '#ffffff',
 };
 
 // Known bot usernames
@@ -212,6 +216,8 @@ export default function Chat() {
         const messageBgOpacity = Number.isFinite(messageBgOpacityRaw)
             ? Math.min(0.9, Math.max(0, messageBgOpacityRaw))
             : 0;
+        const textColorRaw = String(searchParams.textColor || '#ffffff').trim();
+        const textColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColorRaw) ? textColorRaw : '#ffffff';
 
         return {
             ...DEFAULT_CONFIG,
@@ -225,6 +231,7 @@ export default function Chat() {
             pridePronouns: searchParams.pridePronouns === 'true',
             showBadges: searchParams.badges !== 'false',
             showEmotes: searchParams.emotes !== 'false',
+            showHighlights: searchParams.highlights !== 'false',
             showTimestamps: searchParams.timestamps === 'true',
             showSharedChat: searchParams.shared !== 'false' && hasTwitch,
             showNamePaints: searchParams.paints !== 'false',
@@ -242,6 +249,7 @@ export default function Chat() {
             showRoomState: searchParams.roomState === 'true' && hasTwitch,
             pageBackground,
             messageBgOpacity,
+            textColor,
         };
     });
 
@@ -883,7 +891,9 @@ export default function Chat() {
 
         if (isAction) messageType = 'action';
         if (isFirstMsg) messageType = 'firstmessage';
-        if (tags['msg-id'] === 'highlighted-message') messageType = 'highlighted';
+        if (tags['msg-id'] === 'highlighted-message' && config().showHighlights) {
+            messageType = 'highlighted';
+        }
 
         // Check for shared chat
         const sourceRoomId = tags['source-room-id'] as string | undefined;
@@ -1338,10 +1348,10 @@ export default function Chat() {
         if (msg.type === 'raid') classes.push('message-raid');
         if (msg.type === 'announcement') classes.push('chat-message--announcement');
         if (msg.type === 'system') classes.push('message-modaction');
-        if (msg.isHighlighted) classes.push('chat-message--highlighted');
+        if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
-        if (msg.platform === 'velora' && msg.effect) {
+        if (msg.platform === 'velora' && msg.effect && config().showHighlights) {
             classes.push('velora-effect');
             classes.push(`velora-effect--${msg.effect}`);
         }
@@ -1490,6 +1500,11 @@ export default function Chat() {
             isHighlighted = true;
         } else {
             return;
+        }
+
+        if (!config().showHighlights && messageType === 'highlighted') {
+            messageType = 'chat';
+            isHighlighted = false;
         }
 
         if (!content && !rawText) return;
@@ -1862,7 +1877,9 @@ export default function Chat() {
         const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
 
         const rawEffect = item?.effect || item?.messageEffect || item?.message_effect;
-        const effect = typeof rawEffect === "string" ? rawEffect.toLowerCase() : undefined;
+        const effect = config().showHighlights && typeof rawEffect === "string"
+            ? rawEffect.toLowerCase()
+            : undefined;
         const effectColor = typeof item?.effectColor === "string"
             ? item.effectColor
             : typeof item?.effect_color === "string"
@@ -2378,7 +2395,8 @@ export default function Chat() {
                     "--emote-scale": config().emoteScale,
                     "--fade-delay": `${config().fadeOutDelay / 1000}s`,
                     "--message-gap": `0.5rem`,
-                    "--message-bg-alpha": String(config().messageBgOpacity)
+                    "--message-bg-alpha": String(config().messageBgOpacity),
+                    "--chat-text-color": config().textColor
                 }}
             >
                 <ul
@@ -2512,7 +2530,7 @@ export default function Chat() {
 
                                     {/* Message Content */}
                                     <span
-                                        class="text-white break-words message-content"
+                                        class="break-words message-content"
                                         style={msg.isAction ? { color: msg.color } : undefined}
                                     >
                                         <For each={msg.parsedContent}>

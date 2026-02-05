@@ -136,6 +136,7 @@ For advanced users, you can configure the overlay via URL:
 | `pronouns` | boolean | `true` | Show pronoun badges (Twitch only) |
 | `pridePronouns` | boolean | `false` | 🌈 Use animated rainbow badges |
 | `badges` | boolean | `true` | Show badges (Twitch + Kick) |
+| `highlights` | boolean | `true` | Show highlighted messages / message effects |
 | `emotes` | boolean | `true` | Show emotes (incl. 7TV on all platforms) |
 | `emoteScale` | number | `1.0` | Emote size multiplier |
 | `paints` | boolean | `true` | Show 7TV name paints (All platforms) |
@@ -150,6 +151,7 @@ For advanced users, you can configure the overlay via URL:
 | `maxMessages` | number | `50` | Max messages shown |
 | `bg` | string | `transparent` | Page background: `transparent`, `dim`, `dark` |
 | `msgBg` | number | `0` | Message background opacity (0–0.9) |
+| `textColor` | string | `#ffffff` | Default text color (hex) |
 | `hideCommands` | boolean | `false` | Hide `!command` messages |
 | `hideBots` | boolean | `false` | Hide known bots |
 | `blocked` | string | | Comma-separated blocked users |

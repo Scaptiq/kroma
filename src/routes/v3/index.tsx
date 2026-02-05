@@ -56,6 +56,7 @@ export default function ChatSetup() {
     const [showPlatformBadge, setShowPlatformBadge] = createSignal(true);
     const [showBadges, setShowBadges] = createSignal(true);
     const [showEmotes, setShowEmotes] = createSignal(true);
+    const [showHighlights, setShowHighlights] = createSignal(true);
     const [showTimestamps, setShowTimestamps] = createSignal(false);
     const [showSharedChat, setShowSharedChat] = createSignal(true);
     const [showNamePaints, setShowNamePaints] = createSignal(true);
@@ -63,6 +64,11 @@ export default function ChatSetup() {
     const [showReplies, setShowReplies] = createSignal(true);
     const [pageBackground, setPageBackground] = createSignal<'transparent' | 'dim' | 'dark'>('transparent');
     const [messageBgOpacity, setMessageBgOpacity] = createSignal(0);
+    const [textColor, setTextColor] = createSignal('#ffffff');
+    const getSafeMessageBgOpacity = () => {
+        const value = messageBgOpacity();
+        return Number.isFinite(value) ? Math.min(0.9, Math.max(0, value)) : 0;
+    };
     const [hideCommands, setHideCommands] = createSignal(false);
     const [hideBots, setHideBots] = createSignal(false);
     const [maxMessages, setMaxMessages] = createSignal(50);
@@ -76,6 +82,7 @@ export default function ChatSetup() {
     const [customFont, setCustomFont] = createSignal('');
     const [useCustomFont, setUseCustomFont] = createSignal(false);
     const [pridePronouns, setPridePronouns] = createSignal(false);
+    const [streamTarget, setStreamTarget] = createSignal<'obs' | 'meld'>('obs');
 
     const [copied, setCopied] = createSignal(false);
     const [previewUrl, setPreviewUrl] = createSignal("");
@@ -102,6 +109,22 @@ export default function ChatSetup() {
     };
 
     const hasPlatform = (value: Platform) => selectedPlatforms().includes(value);
+    const supportsBadges = (value: Platform) => value === 'twitch' || value === 'kick' || value === 'youtube';
+    const supportsNamePaints = (value: Platform) => value === 'twitch' || value === 'kick' || value === 'youtube';
+    const supportsRoomState = (value: Platform) => value === 'twitch';
+    const supportsHighlights = (value: Platform) => value === 'twitch' || value === 'youtube' || value === 'velora';
+    const supportsNonVeloraHighlights = (value: Platform) => value === 'twitch' || value === 'youtube';
+    const anySupportsBadges = () => selectedPlatforms().some(supportsBadges);
+    const anySupportsNamePaints = () => selectedPlatforms().some(supportsNamePaints);
+    const anySupportsRoomState = () => selectedPlatforms().some(supportsRoomState);
+    const anySupportsHighlights = () => selectedPlatforms().some(supportsHighlights);
+    const anySupportsNonVeloraHighlights = () => selectedPlatforms().some(supportsNonVeloraHighlights);
+    const hasVeloraSelected = () => selectedPlatforms().includes('velora');
+    const highlightLabel = () => {
+        if (hasVeloraSelected() && !anySupportsNonVeloraHighlights()) return 'Message Effects';
+        if (hasVeloraSelected()) return 'Highlighted Messages + Message Effects';
+        return 'Highlighted Messages';
+    };
 
     const getChannelForPlatform = (value: Platform) => {
         switch (value) {
@@ -193,6 +216,7 @@ export default function ChatSetup() {
         }
         if (!showBadges()) params.set('badges', 'false');
         if (!showEmotes()) params.set('emotes', 'false');
+        if (!showHighlights()) params.set('highlights', 'false');
         if (showTimestamps()) params.set('timestamps', 'true');
         if (hasTwitch) {
             if (!showSharedChat()) params.set('shared', 'false');
@@ -215,7 +239,9 @@ export default function ChatSetup() {
         if (customBots().trim()) params.set('bots', customBots().trim());
         if (pridePronouns()) params.set('pridePronouns', 'true');
         if (pageBackground() !== 'transparent') params.set('bg', pageBackground());
-        if (messageBgOpacity() > 0) params.set('msgBg', messageBgOpacity().toFixed(2));
+        const msgBg = getSafeMessageBgOpacity();
+        if (msgBg > 0) params.set('msgBg', msgBg.toFixed(2));
+        if (textColor().toLowerCase() !== '#ffffff') params.set('textColor', textColor());
 
         const queryString = params.toString();
         setPreviewUrl(`/chat/${primaryChannel}?${queryString}`);
@@ -239,6 +265,7 @@ export default function ChatSetup() {
         }
         if (!showBadges()) url.searchParams.set('badges', 'false');
         if (!showEmotes()) url.searchParams.set('emotes', 'false');
+        if (!showHighlights()) url.searchParams.set('highlights', 'false');
         if (showTimestamps()) url.searchParams.set('timestamps', 'true');
         if (hasTwitch) {
             if (!showSharedChat()) url.searchParams.set('shared', 'false');
@@ -260,7 +287,9 @@ export default function ChatSetup() {
         const font = getEffectiveFont();
         if (font !== 'Segoe UI') url.searchParams.set('font', font);
         if (pageBackground() !== 'transparent') url.searchParams.set('bg', pageBackground());
-        if (messageBgOpacity() > 0) url.searchParams.set('msgBg', messageBgOpacity().toFixed(2));
+        const msgBg = getSafeMessageBgOpacity();
+        if (msgBg > 0) url.searchParams.set('msgBg', msgBg.toFixed(2));
+        if (textColor().toLowerCase() !== '#ffffff') url.searchParams.set('textColor', textColor());
         return url.toString();
     };
 
@@ -498,18 +527,30 @@ export default function ChatSetup() {
                                             </div>
 
                                             <div class="grid grid-cols-2 gap-3">
-                                                <div class="flex items-center justify-between">
-                                                    <Label>Subscriber Badges</Label>
-                                                    <Switch checked={showBadges()} onChange={setShowBadges} />
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <Label>Name Paints</Label>
-                                                    <Switch checked={showNamePaints()} onChange={setShowNamePaints} />
-                                                </div>
-                                                <div class="flex items-center justify-between">
-                                                    <Label>Room State</Label>
-                                                    <Switch checked={showRoomState()} onChange={setShowRoomState} />
-                                                </div>
+                                                <Show when={anySupportsHighlights()}>
+                                                    <div class="flex items-center justify-between">
+                                                        <Label>{highlightLabel()}</Label>
+                                                        <Switch checked={showHighlights()} onChange={setShowHighlights} />
+                                                    </div>
+                                                </Show>
+                                                <Show when={anySupportsBadges()}>
+                                                    <div class="flex items-center justify-between">
+                                                        <Label>Subscriber Badges</Label>
+                                                        <Switch checked={showBadges()} onChange={setShowBadges} />
+                                                    </div>
+                                                </Show>
+                                                <Show when={anySupportsNamePaints()}>
+                                                    <div class="flex items-center justify-between">
+                                                        <Label>Name Paints</Label>
+                                                        <Switch checked={showNamePaints()} onChange={setShowNamePaints} />
+                                                    </div>
+                                                </Show>
+                                                <Show when={anySupportsRoomState()}>
+                                                    <div class="flex items-center justify-between">
+                                                        <Label>Room State</Label>
+                                                        <Switch checked={showRoomState()} onChange={setShowRoomState} />
+                                                    </div>
+                                                </Show>
                                                 <div class="flex items-center justify-between">
                                                     <Label>Emotes</Label>
                                                     <Switch checked={showEmotes()} onChange={setShowEmotes} />
@@ -547,8 +588,30 @@ export default function ChatSetup() {
                                                             <span>Message Background</span>
                                                             <span class="text-slate-200">{Math.round(messageBgOpacity() * 100)}%</span>
                                                         </div>
-                                                        <GradientSlider min={0} max={0.9} step={0.05} value={messageBgOpacity()} onChange={setMessageBgOpacity} />
+                                                        <GradientSlider
+                                                            min={0}
+                                                            max={0.9}
+                                                            step={0.05}
+                                                            value={messageBgOpacity()}
+                                                            onChange={(value) => setMessageBgOpacity(Number(value))}
+                                                        />
                                                     </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="border-t border-slate-900 pt-4">
+                                                <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Text</div>
+                                                <div class="mt-3 flex items-center gap-3">
+                                                    <input
+                                                        type="color"
+                                                        value={textColor()}
+                                                        onInput={(e) => setTextColor(e.currentTarget.value)}
+                                                        class="h-10 w-12 rounded-md border border-slate-800 bg-black/60"
+                                                    />
+                                                    <Input
+                                                        value={textColor()}
+                                                        onInput={(e) => setTextColor(e.currentTarget.value)}
+                                                    />
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -609,6 +672,70 @@ export default function ChatSetup() {
                         </section>
 
                         <section class="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Streaming Software</CardTitle>
+                                    <CardDescription>Select your target to see recommended settings.</CardDescription>
+                                </CardHeader>
+                                <CardContent class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button
+                                            class={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm font-medium transition ${streamTarget() === 'obs' ? 'border-white bg-white text-black' : 'border-slate-800 bg-black/60 text-slate-200 hover:border-slate-600'}`}
+                                            onClick={() => setStreamTarget('obs')}
+                                        >
+                                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900">
+                                                <img
+                                                    src="https://upload.wikimedia.org/wikipedia/commons/d/d3/OBS_Studio_Logo.svg"
+                                                    alt="OBS Studio"
+                                                    class="h-5 w-5 object-contain"
+                                                />
+                                            </span>
+                                            OBS
+                                        </button>
+                                        <button
+                                            class={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm font-medium transition ${streamTarget() === 'meld' ? 'border-white bg-white text-black' : 'border-slate-800 bg-black/60 text-slate-200 hover:border-slate-600'}`}
+                                            onClick={() => setStreamTarget('meld')}
+                                        >
+                                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900">
+                                                <img
+                                                    src="https://meldstudio.co/blog/content/images/size/w250/format/webp/2024/11/4e9535e91c08fb5377cd87ed7268f4b8.webp"
+                                                    alt="Meld Studio"
+                                                    class="h-6 w-6 object-contain"
+                                                />
+                                            </span>
+                                            Meld Studio
+                                        </button>
+                                    </div>
+                                    <Show when={streamTarget() === 'obs'}>
+                                        <div class="space-y-2 text-sm text-slate-300">
+                                            <div class="flex items-center justify-between">
+                                                <span>Recommended size</span>
+                                                <span class="text-slate-100">450 × 800</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <span>Font size</span>
+                                                <span class="text-slate-100">16–20px</span>
+                                            </div>
+                                        </div>
+                                    </Show>
+                                    <Show when={streamTarget() === 'meld'}>
+                                        <div class="space-y-2 text-sm text-slate-300">
+                                            <div class="rounded-md border border-slate-800 bg-black/50 px-3 py-2 text-xs text-slate-400">
+                                                Tip: set Page Background to “Dim” and Message Background to ~10% for readability.
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <span>Recommended size</span>
+                                                <span class="text-slate-100">1080 × 1920</span>
+                                            </div>
+                                            <div class="flex items-center justify-between">
+                                                <span>Font size</span>
+                                                <span class="text-slate-100">20–24px</span>
+                                            </div>
+                                        </div>
+                                    </Show>
+                                </CardContent>
+                            </Card>
+
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Overlay URL</CardTitle>
