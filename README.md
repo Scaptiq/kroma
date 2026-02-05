@@ -160,14 +160,6 @@ For advanced users, you can configure the overlay via URL:
 https://kroma.scaptiq.live/chat/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
 ```
 
-### YouTube Setup
-- Set `YOUTUBE_API_KEY` on the server (Cloudflare Pages env or local `.env`) to enable live chat polling.
-- YouTube messages use randomized name colors and support 7TV emotes + paints, plus YouTube emojis (including custom).
-
-### Velora Setup (Early Testing)
-- Velora chat uses public endpoints for history + emotes and may be unstable while in early testing.
-- Optional: set `VELORA_ACCESS_TOKEN` on the server if the Velora API requires auth for user search or emotes.
-
 ---
 
 ## 🧑‍💻 Development
@@ -184,6 +176,10 @@ npm run dev
 # Build for production
 npm run build
 ```
+
+### Environment Variables
+- `YOUTUBE_API_KEY`: Enables YouTube live chat polling (Cloudflare Pages env or local `.env`).
+- `VELORA_ACCESS_TOKEN`: Optional if Velora API requires auth for user search or emotes.
 
 ---
 
