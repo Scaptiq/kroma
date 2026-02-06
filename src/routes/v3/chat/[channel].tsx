@@ -1420,7 +1420,9 @@ export default function Chat() {
         if (msg.type === 'submysterygift') classes.push('message-submysterygift');
         if (msg.type === 'raid') classes.push('message-raid');
         if (msg.type === 'announcement') classes.push('chat-message--announcement');
-        if (msg.type === 'system') classes.push('message-modaction');
+        if (msg.type === 'system' && (msg.platform !== 'velora' || config().showHighlights)) {
+            classes.push('message-modaction');
+        }
         if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
