@@ -535,6 +535,224 @@ body {
     opacity: 0.4;
 }
 
+/* Velora Gift Card */
+.message-velora-giftcard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-giftcard::before,
+.message-velora-giftcard::after {
+    content: none !important;
+}
+
+.chat-message--velora-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.chat-message--velora-card::before,
+.chat-message--velora-card::after {
+    content: none !important;
+}
+
+.message-velora-subcard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-subcard::before,
+.message-velora-subcard::after {
+    content: none !important;
+}
+
+.velora-giftcard {
+    background: radial-gradient(120% 120% at 0% 0%, rgba(88, 68, 140, 0.35), rgba(22, 18, 38, 0.95) 55%),
+        linear-gradient(160deg, rgba(30, 24, 50, 0.98), rgba(14, 12, 24, 0.98));
+    border: none;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+    background-clip: padding-box;
+    border-radius: 22px;
+    padding: 16px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #efe9ff;
+}
+
+.velora-giftcard__header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.velora-giftcard__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(160, 135, 220, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(220, 210, 255, 0.18);
+    overflow: hidden;
+}
+
+.velora-giftcard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-giftcard__header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.velora-giftcard__gifter {
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.2px;
+}
+
+.velora-giftcard__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(210, 190, 245, 0.4);
+    background: rgba(45, 35, 80, 0.6);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #f2ecff;
+}
+
+.velora-giftcard__pill-icon {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.velora-giftcard__recipients {
+    border: 1px solid rgba(175, 155, 215, 0.35);
+    background: rgba(18, 14, 30, 0.7);
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.velora-giftcard__recipients-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(230, 220, 255, 0.65);
+    margin-bottom: 6px;
+}
+
+.velora-giftcard__recipients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.95rem;
+}
+
+.velora-giftcard__recipient {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #efe9ff;
+}
+
+.velora-giftcard__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #d7c9ff;
+    box-shadow: 0 0 8px rgba(215, 201, 255, 0.4);
+}
+
+.velora-subcard {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: radial-gradient(140% 140% at 0% 0%, rgba(64, 115, 170, 0.25), rgba(10, 20, 40, 0.95) 60%),
+        linear-gradient(160deg, rgba(12, 24, 44, 0.98), rgba(9, 16, 30, 0.98));
+    border: 1px solid rgba(120, 170, 220, 0.4);
+    border-radius: 20px;
+    padding: 14px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #eef4ff;
+}
+
+.velora-subcard__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(90, 140, 200, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(170, 210, 255, 0.4);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.velora-subcard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-subcard__text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.velora-subcard__name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #f6f9ff;
+}
+
+.velora-subcard__status {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(200, 220, 245, 0.8);
+}
+
+.velora-subcard__tier {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(35, 60, 90, 0.7);
+    border: 1px solid rgba(150, 190, 235, 0.5);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: #e7f0ff;
+    flex-shrink: 0;
+}
+
 /* Raid Messages */
 .message-raid {
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.5) 0%, rgba(255, 107, 107, 0.2) 100%);

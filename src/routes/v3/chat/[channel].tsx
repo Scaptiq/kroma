@@ -1406,6 +1406,9 @@ export default function Chat() {
         const classes = ['chat-message'];
 
         if (msg.type === 'action') classes.push('chat-message--action');
+        if (msg.platform === 'velora' && msg.veloraCard?.type) {
+            classes.push('chat-message--velora-card');
+        }
 
         return classes.join(' ');
     };
@@ -1420,8 +1423,14 @@ export default function Chat() {
         if (msg.type === 'submysterygift') classes.push('message-submysterygift');
         if (msg.type === 'raid') classes.push('message-raid');
         if (msg.type === 'announcement') classes.push('chat-message--announcement');
-        if (msg.type === 'system' && (msg.platform !== 'velora' || config().showHighlights)) {
+        if (msg.type === 'system' && (msg.platform !== 'velora' || (config().showHighlights && !msg.veloraCard?.type))) {
             classes.push('message-modaction');
+        }
+        if (msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration') {
+            classes.push('message-velora-giftcard');
+        }
+        if (msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration') {
+            classes.push('message-velora-subcard');
         }
         if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
@@ -1893,8 +1902,12 @@ export default function Chat() {
         const username = String(user?.username || user?.handle || user?.slug || item?.username || "unknown");
         const displayName = String(user?.displayName || user?.display_name || item?.displayName || username);
         const userId = String(user?.id || user?.userId || item?.userId || username);
+        const cardSource = item?.metadata?.card || item?.card || item?.metadata?.payload?.card;
+        const cardType = typeof cardSource?.type === "string" ? cardSource.type : undefined;
+        const cardPayload = cardSource?.payload;
+
         const content = String(item?.message || item?.content || item?.text || "");
-        if (!content) return;
+        if (!content && !cardType) return;
 
         const rawTimestamp = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
         const timestamp = rawTimestamp
@@ -2050,6 +2063,7 @@ export default function Chat() {
             effect,
             effectVariant,
             effectColor,
+            veloraCard: cardType ? { type: cardType, payload: cardPayload } : undefined,
         };
 
         maybePlayMessageSound(timestamp);
@@ -2588,131 +2602,213 @@ export default function Chat() {
                                         ...(msg.effectColor ? { "--velora-effect-color": msg.effectColor } : {})
                                     }}
                                 >
-                                    <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
-                                        {/* Timestamp */}
-                                        <Show when={config().showTimestamps}>
-                                            <span class="timestamp self-center">
-                                                {formatTime(msg.timestamp)}
-                                            </span>
-                                        </Show>
+                                    {(() => {
+                                        const isVeloraGift = msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration';
+                                        const isVeloraSub = msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration';
+                                        return (
+                                            <Show
+                                                when={isVeloraGift || isVeloraSub}
+                                                fallback={
+                                            <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
+                                                {/* Timestamp */}
+                                                <Show when={config().showTimestamps}>
+                                                    <span class="timestamp self-center">
+                                                        {formatTime(msg.timestamp)}
+                                                    </span>
+                                                </Show>
 
-                                    {/* Shared Chat Badge */}
-                                    <Show when={msg.isShared && config().showSharedChat}>
-                                        <div class="mr-2 flex items-center h-[20px] self-center">
-                                            <Show when={msg.sourceLogo}>
-                                                <img
-                                                    src={msg.sourceLogo}
-                                                    alt={msg.sourceChannelName || "Source"}
-                                                    class="w-5 h-5 rounded-full ring-1 ring-white/30"
-                                                    title={msg.sourceChannelName ? `From ${msg.sourceChannelName}` : "Shared Message"}
-                                                />
-                                            </Show>
-                                        </div>
-                                    </Show>
+                                                {/* Shared Chat Badge */}
+                                                <Show when={msg.isShared && config().showSharedChat}>
+                                                    <div class="mr-2 flex items-center h-[20px] self-center">
+                                                        <Show when={msg.sourceLogo}>
+                                                            <img
+                                                                src={msg.sourceLogo}
+                                                                alt={msg.sourceChannelName || "Source"}
+                                                                class="w-5 h-5 rounded-full ring-1 ring-white/30"
+                                                                title={msg.sourceChannelName ? `From ${msg.sourceChannelName}` : "Shared Message"}
+                                                            />
+                                                        </Show>
+                                                    </div>
+                                                </Show>
 
-                                    {/* Badges */}
-                                    <Show when={(config().showBadges && msg.badges.length > 0) || config().showPlatformBadge}>
-                                        <div class="flex gap-1 self-center shrink-0 select-none items-center">
-                                            <Show when={config().showPlatformBadge}>
+                                                {/* Badges */}
+                                                <Show when={(config().showBadges && msg.badges.length > 0) || config().showPlatformBadge}>
+                                                    <div class="flex gap-1 self-center shrink-0 select-none items-center">
+                                                        <Show when={config().showPlatformBadge}>
+                                                            {(() => {
+                                                                const platform = getMessagePlatform(msg);
+                                                                return (
+                                                                    <img
+                                                                        src={PLATFORM_LOGOS[platform]}
+                                                                        alt={getPlatformLabel(platform)}
+                                                                        class="platform-logo"
+                                                                        loading="lazy"
+                                                                    />
+                                                                );
+                                                            })()}
+                                                        </Show>
+                                                        <For each={msg.badges}>
+                                                            {(badge) => (
+                                                                <img
+                                                                    src={badge.url}
+                                                                    alt={badge.title}
+                                                                    title={badge.title}
+                                                                    class="badge"
+                                                                    loading="lazy"
+                                                                />
+                                                            )}
+                                                        </For>
+                                                    </div>
+                                                </Show>
+
+                                                {/* Username Group */}
+                                                <div class="flex items-baseline shrink-0">
+                                                    {/* Pronouns */}
+                                                    <Show when={msg.pronouns && config().showPronouns && msg.platform === 'twitch'}>
+                                                        <span
+                                                            class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge--colored'} mr-1.5`}
+                                                            style={!config().pridePronouns ? {
+                                                                background: msg.pronounColor || '#A855F7',
+                                                                "background-size": msg.pronounIsGradient ? '200% 200%' : undefined,
+                                                                animation: msg.pronounIsGradient ? 'pride-shimmer 3s ease infinite' : undefined
+                                                            } : undefined}
+                                                        >
+                                                            {msg.pronouns}
+                                                        </span>
+                                                    </Show>
+
+                                                    <span
+                                                        class={`username ${msg.paint ? 'username--painted' : ''}`}
+                                                        style={{
+                                                            color: msg.paint ? undefined : msg.color,
+                                                            ...(msg.paint || {})
+                                                        }}
+                                                    >
+                                                        {msg.displayName}
+                                                    </span>
+
+                                                    <Show when={!msg.isAction}>
+                                                        <span class="separator">:</span>
+                                                    </Show>
+                                                </div>
+
+                                                {/* Bits/Cheer Badge */}
+                                                <Show when={msg.bits}>
+                                                    <span
+                                                        class="cheer-amount animate-pop-in"
+                                                        style={{ color: getCheerTierColor(msg.bits!) }}
+                                                    >
+                                                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" />
+                                                        </svg>
+                                                        {msg.bits}
+                                                    </span>
+                                                </Show>
+
+                                                {/* Message Content */}
+                                                <span
+                                                    class="break-words message-content"
+                                                    style={msg.isAction ? { color: msg.color } : undefined}
+                                                >
+                                                    <For each={msg.parsedContent}>
+                                                        {(part) => (
+                                                            <>
+                                                                {typeof part === 'string' ? (
+                                                                    <span>{part}</span>
+                                                                ) : part.type === 'emote' ? (
+                                                                    <img
+                                                                        src={part.url}
+                                                                        alt={part.name}
+                                                                        title={part.name}
+                                                                        class={`emote ${part.isZeroWidth ? 'emote--zero-width' : ''}`}
+                                                                        loading="lazy"
+                                                                    />
+                                                                ) : part.type === 'cheer' ? (
+                                                                    <span class="inline-flex items-center gap-0.5 mx-0.5" style={{ color: part.color }}>
+                                                                        <img src={part.url} alt={part.prefix} class="h-5 w-5" loading="lazy" />
+                                                                        <span class="font-bold text-sm">{part.bits}</span>
+                                                                    </span>
+                                                                ) : null}
+                                                            </>
+                                                        )}
+                                                    </For>
+                                                </span>
+                                            </div>
+                                                }
+                                            >
                                                 {(() => {
-                                                    const platform = getMessagePlatform(msg);
+                                                    if (isVeloraGift) {
+                                                        const payload = msg.veloraCard?.payload || {};
+                                                        const gifter = payload.gifter || {};
+                                                        const giftCount = typeof payload.giftCount === "number" ? payload.giftCount : 1;
+                                                        const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
+                                                        const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
+                                                        const recipients = Array.isArray(payload.recipients) ? payload.recipients : [];
+                                                        return (
+                                                            <div class="velora-giftcard">
+                                                                <div class="velora-giftcard__header">
+                                                                    <div class="velora-giftcard__avatar">
+                                                                        <img
+                                                                            src={gifter.avatarUrl || msg.avatarUrl || ""}
+                                                                            alt={gifter.displayName || gifter.username || msg.displayName}
+                                                                            class="velora-giftcard__avatar-img"
+                                                                            loading="lazy"
+                                                                        />
+                                                                    </div>
+                                                                    <div class="velora-giftcard__header-text">
+                                                                        <div class="velora-giftcard__gifter">
+                                                                            {gifter.displayName || gifter.username || msg.displayName}
+                                                                        </div>
+                                                                        <div class="velora-giftcard__pill">
+                                                                            <span class="velora-giftcard__pill-icon">🎁</span>
+                                                                            <span>{giftCount} Gift • {tierLabel}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="velora-giftcard__recipients">
+                                                                    <div class="velora-giftcard__recipients-title">Recipients</div>
+                                                                    <div class="velora-giftcard__recipients-list">
+                                                                        <For each={recipients}>
+                                                                            {(recipient: any) => (
+                                                                                <div class="velora-giftcard__recipient">
+                                                                                    <span class="velora-giftcard__dot" />
+                                                                                    <span>{recipient.displayName || recipient.username || "Viewer"}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </For>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const payload = msg.veloraCard?.payload || {};
+                                                    const subscriber = payload.subscriber || {};
+                                                    const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
+                                                    const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
                                                     return (
-                                                        <img
-                                                            src={PLATFORM_LOGOS[platform]}
-                                                            alt={getPlatformLabel(platform)}
-                                                            class="platform-logo"
-                                                            loading="lazy"
-                                                        />
+                                                        <div class="velora-subcard">
+                                                            <div class="velora-subcard__avatar">
+                                                                <img
+                                                                    src={subscriber.avatarUrl || msg.avatarUrl || ""}
+                                                                    alt={subscriber.displayName || subscriber.username || msg.displayName}
+                                                                    class="velora-subcard__avatar-img"
+                                                                    loading="lazy"
+                                                                />
+                                                            </div>
+                                                            <div class="velora-subcard__text">
+                                                                <div class="velora-subcard__name">
+                                                                    {subscriber.displayName || subscriber.username || msg.displayName}
+                                                                </div>
+                                                                <div class="velora-subcard__status">New Subscriber</div>
+                                                            </div>
+                                                            <div class="velora-subcard__tier">{tierLabel}</div>
+                                                        </div>
                                                     );
                                                 })()}
                                             </Show>
-                                            <For each={msg.badges}>
-                                                {(badge) => (
-                                                    <img
-                                                        src={badge.url}
-                                                        alt={badge.title}
-                                                        title={badge.title}
-                                                        class="badge"
-                                                        loading="lazy"
-                                                    />
-                                                )}
-                                            </For>
-                                        </div>
-                                    </Show>
-
-                                    {/* Username Group */}
-                                    <div class="flex items-baseline shrink-0">
-                                        {/* Pronouns */}
-                                        <Show when={msg.pronouns && config().showPronouns && msg.platform === 'twitch'}>
-                                            <span
-                                                class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge--colored'} mr-1.5`}
-                                                style={!config().pridePronouns ? {
-                                                    background: msg.pronounColor || '#A855F7',
-                                                    "background-size": msg.pronounIsGradient ? '200% 200%' : undefined,
-                                                    animation: msg.pronounIsGradient ? 'pride-shimmer 3s ease infinite' : undefined
-                                                } : undefined}
-                                            >
-                                                {msg.pronouns}
-                                            </span>
-                                        </Show>
-
-                                        <span
-                                            class={`username ${msg.paint ? 'username--painted' : ''}`}
-                                            style={{
-                                                color: msg.paint ? undefined : msg.color,
-                                                ...(msg.paint || {})
-                                            }}
-                                        >
-                                            {msg.displayName}
-                                        </span>
-
-                                        <Show when={!msg.isAction}>
-                                            <span class="separator">:</span>
-                                        </Show>
-                                    </div>
-
-                                    {/* Bits/Cheer Badge */}
-                                    <Show when={msg.bits}>
-                                        <span
-                                            class="cheer-amount animate-pop-in"
-                                            style={{ color: getCheerTierColor(msg.bits!) }}
-                                        >
-                                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" />
-                                            </svg>
-                                            {msg.bits}
-                                        </span>
-                                    </Show>
-
-                                    {/* Message Content */}
-                                        <span
-                                            class="break-words message-content"
-                                            style={msg.isAction ? { color: msg.color } : undefined}
-                                        >
-                                            <For each={msg.parsedContent}>
-                                            {(part) => (
-                                                <>
-                                                    {typeof part === 'string' ? (
-                                                        <span>{part}</span>
-                                                    ) : part.type === 'emote' ? (
-                                                        <img
-                                                            src={part.url}
-                                                            alt={part.name}
-                                                            title={part.name}
-                                                            class={`emote ${part.isZeroWidth ? 'emote--zero-width' : ''}`}
-                                                            loading="lazy"
-                                                        />
-                                                    ) : part.type === 'cheer' ? (
-                                                        <span class="inline-flex items-center gap-0.5 mx-0.5" style={{ color: part.color }}>
-                                                            <img src={part.url} alt={part.prefix} class="h-5 w-5" loading="lazy" />
-                                                            <span class="font-bold text-sm">{part.bits}</span>
-                                                        </span>
-                                                    ) : null}
-                                                </>
-                                            )}
-                                            </For>
-                                        </span>
-                                    </div>
+                                        );
+                                    })()}
                                 </div>
                             </li>
                         )}

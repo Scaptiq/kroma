@@ -121,6 +121,12 @@ export interface ChatMessage {
         displayName: string;
         viewerCount: number;
     };
+
+    // Velora card payloads (e.g., gift celebrations)
+    veloraCard?: {
+        type: string;
+        payload?: any;
+    };
 }
 
 export interface SubTier {
