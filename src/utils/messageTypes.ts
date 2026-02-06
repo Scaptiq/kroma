@@ -104,6 +104,7 @@ export interface ChatMessage {
 
     // Velora message effects
     effect?: 'glow' | 'galaxy' | 'rainbow' | 'gigantify' | string;
+    effectVariant?: string;
     effectColor?: string;
 
     // Sub info (for sub messages)

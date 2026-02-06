@@ -169,6 +169,7 @@ export default function Chat() {
     let veloraSeenMessageIds = new Set<string>();
     let veloraChannelId: string | null = null;
     let veloraStreamId: string | null = null;
+    let veloraMinTimestamp = 0;
     let veloraEmoteMap = new Map<string, string>();
     let veloraResolveInFlight = new Set<string>();
     let veloraBadgeMap = new Map<string, { url: string; title?: string }>();
@@ -1389,14 +1390,30 @@ export default function Chat() {
         playMessageSound();
     };
 
+    const clearChatMessages = () => {
+        setMessages([]);
+    };
+
+    const isClearChatNotice = (content: string) => {
+        const lowered = content.toLowerCase();
+        return lowered.includes('cleared the chat');
+    };
+
     /**
      * Get message container class based on type
      */
     const getMessageClass = (msg: ChatMessage): string => {
         const classes = ['chat-message'];
 
-        // Message type styling
         if (msg.type === 'action') classes.push('chat-message--action');
+
+        return classes.join(' ');
+    };
+
+    const getMessageBubbleClass = (msg: ChatMessage): string => {
+        const classes = ['message-bubble'];
+
+        // Message type styling
         if (msg.type === 'sub') classes.push('message-sub');
         if (msg.type === 'resub') classes.push('message-resub');
         if (msg.type === 'subgift') classes.push('message-subgift');
@@ -1866,6 +1883,10 @@ export default function Chat() {
             })()
             : Date.now();
 
+        if (veloraMinTimestamp && timestamp < veloraMinTimestamp) {
+            return;
+        }
+
         if (config().hideBots && KNOWN_BOTS.has(username.toLowerCase())) return;
         if (config().blockedUsers.includes(username.toLowerCase())) return;
         if (config().customBots.includes(username.toLowerCase())) return;
@@ -1934,16 +1955,36 @@ export default function Chat() {
         const parsedContent = parseVeloraMessageContent(content, item?.emotes || item?.emoticons);
 
         const rawEffect = item?.effect || item?.messageEffect || item?.message_effect;
+        const normalizeVeloraEffect = (value: string) => {
+            const lowered = value.toLowerCase();
+            if (lowered.startsWith('glow')) return 'glow';
+            if (lowered.startsWith('galaxy')) return 'galaxy';
+            return lowered;
+        };
+        const effectVariant = typeof rawEffect === "string" ? rawEffect.toLowerCase() : undefined;
         const effect = config().showHighlights && typeof rawEffect === "string"
-            ? rawEffect.toLowerCase()
+            ? normalizeVeloraEffect(rawEffect)
             : undefined;
-        const effectColor = typeof item?.effectColor === "string"
+        const baseEffectColor = typeof item?.effectColor === "string"
             ? item.effectColor
             : typeof item?.effect_color === "string"
                 ? item.effect_color
                 : undefined;
+        const galaxyPalette: Record<string, string> = {
+            galaxy_nebula: '#8b5cf6',
+            galaxy_aurora: '#22c55e',
+            galaxy_cosmic: '#3b82f6',
+            galaxy_stardust: '#ec4899'
+        };
+        const effectColor = effect === 'galaxy' && effectVariant && galaxyPalette[effectVariant]
+            ? galaxyPalette[effectVariant]
+            : baseEffectColor;
 
         const isSystem = item?.isSystem === true || item?.role === "system";
+        if (isSystem && isClearChatNotice(content)) {
+            clearChatMessages();
+            veloraMinTimestamp = Date.now();
+        }
         const newMessage: ChatMessage = {
             id: messageKey,
             username,
@@ -1961,6 +2002,7 @@ export default function Chat() {
             platform: "velora",
             isShared: false,
             effect,
+            effectVariant,
             effectColor,
         };
 
@@ -2044,6 +2086,7 @@ export default function Chat() {
         }
         veloraStreamId = streamId ? String(streamId) : null;
         veloraSeenMessageIds.clear();
+        veloraMinTimestamp = Date.now();
         await Promise.all([
             loadVeloraEmotes(veloraChannelId),
             loadVeloraBadgeCatalog(),
@@ -2138,6 +2181,9 @@ export default function Chat() {
                 });
 
             client.on("message", handleMessage);
+            client.on("clearchat", () => {
+                clearChatMessages();
+            });
 
             // Subscription event
             client.on("subscription", (channel, username, method, message, userstate) => {
@@ -2467,9 +2513,7 @@ export default function Chat() {
                                 class={getMessageClass(msg)}
                                 data-fading={config().fadeOutMessages ? "true" : "false"}
                                 style={{
-                                    "animation-delay": `${index() * 20}ms, var(--fade-delay)`,
-                                    ...(msg.isAction ? { color: msg.color } : {}),
-                                    ...(msg.effectColor ? { "--velora-effect-color": msg.effectColor } : {})
+                                    "animation-delay": `${index() * 20}ms, var(--fade-delay)`
                                 }}
                             >
                                 {/* Reply Context */}
@@ -2490,13 +2534,21 @@ export default function Chat() {
                                     </div>
                                 </Show>
 
-                                <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
-                                    {/* Timestamp */}
-                                    <Show when={config().showTimestamps}>
-                                        <span class="timestamp self-center">
-                                            {formatTime(msg.timestamp)}
-                                        </span>
-                                    </Show>
+                                <div
+                                    class={getMessageBubbleClass(msg)}
+                                    data-effect={msg.effectVariant || msg.effect}
+                                    style={{
+                                        ...(msg.isAction ? { color: msg.color } : {}),
+                                        ...(msg.effectColor ? { "--velora-effect-color": msg.effectColor } : {})
+                                    }}
+                                >
+                                    <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
+                                        {/* Timestamp */}
+                                        <Show when={config().showTimestamps}>
+                                            <span class="timestamp self-center">
+                                                {formatTime(msg.timestamp)}
+                                            </span>
+                                        </Show>
 
                                     {/* Shared Chat Badge */}
                                     <Show when={msg.isShared && config().showSharedChat}>
@@ -2587,11 +2639,11 @@ export default function Chat() {
                                     </Show>
 
                                     {/* Message Content */}
-                                    <span
-                                        class="break-words message-content"
-                                        style={msg.isAction ? { color: msg.color } : undefined}
-                                    >
-                                        <For each={msg.parsedContent}>
+                                        <span
+                                            class="break-words message-content"
+                                            style={msg.isAction ? { color: msg.color } : undefined}
+                                        >
+                                            <For each={msg.parsedContent}>
                                             {(part) => (
                                                 <>
                                                     {typeof part === 'string' ? (
@@ -2612,8 +2664,9 @@ export default function Chat() {
                                                     ) : null}
                                                 </>
                                             )}
-                                        </For>
-                                    </span>
+                                            </For>
+                                        </span>
+                                    </div>
                                 </div>
                             </li>
                         )}
