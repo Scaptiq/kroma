@@ -385,11 +385,6 @@ export default function ChatSetup() {
                                                             onInput={(e) => setChannelForPlatform(current, sanitizeChannel(e.currentTarget.value, current))}
                                                         />
                                                     </div>
-                                                    <Show when={current === 'velora'}>
-                                                        <div class="rounded-md border border-slate-800 bg-black/50 px-3 py-2 text-xs text-slate-400">
-                                                            Velora gift and subscription celebration cards render automatically once the channel is set.
-                                                        </div>
-                                                    </Show>
                                                 </div>
                                             );
                                         })()}
