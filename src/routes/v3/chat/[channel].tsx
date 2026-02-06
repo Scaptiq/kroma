@@ -1694,6 +1694,29 @@ export default function Chat() {
         }
     };
 
+    const makeVeloraBadgeSvg = (label: string, bg: string, fg = "#ffffff") => {
+        const safeLabel = label.slice(0, 3).toUpperCase();
+        const svg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+                <rect x="0.5" y="0.5" width="17" height="17" rx="4" ry="4" fill="${bg}" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+                <text x="9" y="9" text-anchor="middle" dominant-baseline="middle" fill="${fg}" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">${safeLabel}</text>
+            </svg>
+        `;
+        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    };
+
+    const VELORA_FALLBACK_BADGES = new Map<string, { url: string; title: string }>([
+        ["broadcaster", { url: "https://velora.tv/velora-badges/StreamerBroadcasterBadge.png", title: "Broadcaster" }],
+        ["owner", { url: "https://velora.tv/velora-badges/StreamerBroadcasterBadge.png", title: "Broadcaster" }],
+        ["moderator", { url: "https://velora.tv/velora-badges/ModeratorModBadge.png", title: "Moderator" }],
+        ["mod", { url: "https://velora.tv/velora-badges/ModeratorModBadge.png", title: "Moderator" }],
+        ["subscriber", { url: makeVeloraBadgeSvg("SU", "#3b82f6"), title: "Subscriber" }],
+        ["vip", { url: "https://velora.tv/velora-badges/VIPBadge.png", title: "VIP" }],
+        ["admin", { url: "https://velora.tv/velora-badges/VeloraCommunityManagement.png", title: "Community Management" }],
+        ["staff-community", { url: "https://velora.tv/velora-badges/VeloraCommunityManagement.png", title: "Community Management" }],
+        ["bot", { url: "https://velora.tv/velora-badges/BotBadge.png", title: "Bot" }],
+    ]);
+
     const extractVeloraBadgeList = (data: any): any[] => {
         if (!data) return [];
         if (Array.isArray(data)) return data;
@@ -1897,7 +1920,8 @@ export default function Chat() {
             return entries.flatMap((badge: any, index: number) => {
                 if (!badge) return [];
                 if (typeof badge === "string") {
-                    const lookup = veloraBadgeMap.get(badge.toLowerCase());
+                    const normalized = badge.toLowerCase();
+                    const lookup = veloraBadgeMap.get(normalized) || VELORA_FALLBACK_BADGES.get(normalized);
                     if (!lookup?.url) return [];
                     return [{
                         id: `velora-${badge}-${index}`,
@@ -1906,11 +1930,30 @@ export default function Chat() {
                         provider: "velora"
                     }];
                 }
+                const badgeKey = String(badge?.key || badge?.slug || badge?.id || badge?.name || badge?.code || badge?.type || badge?.role || badge?.label || "").toLowerCase();
                 const url = getVeloraBadgeUrl(badge);
-                if (!url) return [];
+                const fallback = badgeKey ? VELORA_FALLBACK_BADGES.get(badgeKey) : undefined;
+                const resolvedUrl = url || fallback?.url;
+                if (!resolvedUrl) return [];
                 const title = badge?.title || badge?.name || badge?.label || badge?.type || "Badge";
                 return [{
-                    id: `velora-${badge?.id || title}-${index}`,
+                    id: `velora-${badge?.id || badgeKey || title}-${index}`,
+                    title: String(fallback?.title || title),
+                    url: String(resolvedUrl),
+                    provider: "velora"
+                }];
+            });
+        };
+
+        const collectVeloraBadgeDetails = (source: any): Badge[] => {
+            const entries = Array.isArray(source) ? source : [];
+            return entries.flatMap((badge: any, index: number) => {
+                if (!badge) return [];
+                const url = badge?.animatedAssetUrl || badge?.staticAssetUrl || badge?.url || badge?.imageUrl || badge?.image_url;
+                if (!url) return [];
+                const title = badge?.label || badge?.name || badge?.title || badge?.slug || "Badge";
+                return [{
+                    id: `velora-detail-${badge?.id || badge?.slug || title}-${index}`,
                     title: String(title),
                     url: String(url),
                     provider: "velora"
@@ -1929,6 +1972,7 @@ export default function Chat() {
 
         const roleSource = item?.userRoles || item?.roles || item?.role;
         const veloraBadges = [
+            ...collectVeloraBadgeDetails(item?.badgeDetails),
             ...collectVeloraBadges(badgeSource),
             ...collectVeloraBadges(Array.isArray(roleSource) ? roleSource : roleSource ? [roleSource] : [])
         ];
