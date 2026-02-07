@@ -592,6 +592,21 @@ body {
     content: none !important;
 }
 
+.message-velora-voltscard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-voltscard::before,
+.message-velora-voltscard::after {
+    content: none !important;
+}
+
 .velora-giftcard {
     --velora-accent: #b9a7ff;
     background: radial-gradient(120% 120% at 0% 0%, rgba(88, 68, 140, 0.35), rgba(22, 18, 38, 0.95) 55%),
@@ -685,6 +700,13 @@ body {
     flex-direction: column;
     gap: 4px;
     font-size: 0.95rem;
+}
+
+.velora-giftcard__message {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: rgba(230, 220, 255, 0.8);
+    line-height: 1.2;
 }
 
 .velora-giftcard__recipient {
@@ -836,6 +858,82 @@ body {
     letter-spacing: 2px;
     color: #f4eeff;
     flex-shrink: 0;
+}
+
+.velora-voltscard {
+    --velora-accent: #9bdcff;
+    background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(12, 14, 24, 0.95) 60%),
+        linear-gradient(160deg, rgba(14, 16, 28, 0.98), rgba(10, 12, 20, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 38%, transparent);
+    border-radius: 22px;
+    padding: 16px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #e8f8ff;
+}
+
+.velora-voltscard__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.velora-voltscard__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--velora-accent) 18%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.velora-voltscard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-voltscard__header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.velora-voltscard__name {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: #f3fbff;
+}
+
+.velora-voltscard__pill {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 18%, rgba(30, 25, 45, 0.7));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 50%, transparent);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 2.2px;
+    color: #f2f7ff;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.velora-voltscard__message {
+    font-size: 0.8rem;
+    color: rgba(210, 240, 255, 0.85);
+    line-height: 1.2;
+}
+
+.velora-voltscard__bolt {
+    font-size: 14px;
+    opacity: 0.85;
 }
 
 /* Raid Messages */

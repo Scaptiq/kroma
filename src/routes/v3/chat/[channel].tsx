@@ -1436,6 +1436,9 @@ export default function Chat() {
         if (msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration') {
             classes.push('message-velora-pointscard');
         }
+        if (msg.platform === 'velora' && msg.veloraCard?.type === 'volts-celebration') {
+            classes.push('message-velora-voltscard');
+        }
         if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
@@ -2618,9 +2621,10 @@ export default function Chat() {
                                         const isVeloraGift = msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration';
                                         const isVeloraSub = msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration';
                                         const isVeloraPoints = msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration';
+                                        const isVeloraVolts = msg.platform === 'velora' && msg.veloraCard?.type === 'volts-celebration';
                                         return (
                                             <Show
-                                                when={isVeloraGift || isVeloraSub || isVeloraPoints}
+                                                when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts}
                                                 fallback={
                                             <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
                                                 {/* Timestamp */}
@@ -2757,6 +2761,7 @@ export default function Chat() {
                                                         const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
                                                         const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
                                                         const recipients = Array.isArray(payload.recipients) ? payload.recipients : [];
+                                                        const messageText = typeof payload.message === "string" ? payload.message.trim() : "";
                                                         return (
                                                             <div
                                                                 class="velora-giftcard"
@@ -2793,6 +2798,9 @@ export default function Chat() {
                                                                             )}
                                                                         </For>
                                                                     </div>
+                                                                    <Show when={messageText}>
+                                                                        <div class="velora-giftcard__message">{messageText}</div>
+                                                                    </Show>
                                                                 </div>
                                                             </div>
                                                         );
@@ -2823,6 +2831,42 @@ export default function Chat() {
                                                                 </div>
                                                                 <div class="velora-pointscard__pill">
                                                                     {cost !== null ? `${cost} Points` : 'Channel Points'}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (isVeloraVolts) {
+                                                        const payload = msg.veloraCard?.payload || {};
+                                                        const sender = payload.sender || {};
+                                                        const displayName = sender.displayName || sender.username || msg.displayName;
+                                                        const avatarUrl = sender.avatarUrl || msg.avatarUrl || "";
+                                                        const amount = typeof payload.amount === "number" ? payload.amount : null;
+                                                        const messageText = typeof payload.message === "string" ? payload.message.trim() : "";
+                                                        return (
+                                                            <div
+                                                                class="velora-voltscard"
+                                                                style={{ "--velora-accent": msg.accentColor || "#9bdcff" }}
+                                                            >
+                                                                <div class="velora-voltscard__header">
+                                                                    <div class="velora-voltscard__avatar">
+                                                                        <img
+                                                                            src={avatarUrl}
+                                                                            alt={displayName}
+                                                                            class="velora-voltscard__avatar-img"
+                                                                            loading="lazy"
+                                                                        />
+                                                                    </div>
+                                                                    <div class="velora-voltscard__header-text">
+                                                                        <div class="velora-voltscard__name">{displayName}</div>
+                                                                        <div class="velora-voltscard__pill">
+                                                                            <span class="velora-voltscard__bolt">⚡</span>
+                                                                            {amount !== null ? `${amount} Volts` : "Volts"}
+                                                                        </div>
+                                                                        <Show when={messageText}>
+                                                                            <div class="velora-voltscard__message">{messageText}</div>
+                                                                        </Show>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         );
