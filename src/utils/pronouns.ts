@@ -3,6 +3,8 @@
  * Uses the Alejo.io pronouns API (https://pronouns.alejo.io)
  */
 
+import { createAsyncCache } from "./cache";
+
 export interface PronounInfo {
     display: string;      // e.g., "he/him", "she/her", "they/them"
     singular?: string;    // e.g., "he", "she", "they"
@@ -43,7 +45,8 @@ const PRONOUN_DISPLAY: { [key: string]: PronounInfo } = {
 
 const PRONOUNS_API_BASE = "https://pronouns.alejo.io/api";
 
-const pendingRequests = new Map<string, Promise<PronounInfo | null>>();
+const PRONOUN_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const pronounCache = createAsyncCache<string, PronounInfo>({ ttlMs: PRONOUN_CACHE_TTL });
 
 /**
  * Get pronouns for a single user
@@ -59,12 +62,7 @@ export async function getUserPronouns(username: string): Promise<string | null> 
 export async function getUserPronounInfo(username: string): Promise<PronounInfo | null> {
     const lowerUser = username.toLowerCase();
 
-    // Check if there's already a pending request
-    if (pendingRequests.has(lowerUser)) {
-        return pendingRequests.get(lowerUser)!;
-    }
-
-    const promise = (async () => {
+    return pronounCache.fetch(lowerUser, async () => {
         try {
             const response = await fetch(`${PRONOUNS_API_BASE}/users/${lowerUser}?_=${Date.now()}`, {
                 cache: "no-store"
@@ -110,13 +108,8 @@ export async function getUserPronounInfo(username: string): Promise<PronounInfo 
         } catch (e) {
             console.error("Failed to fetch pronouns for", username, e);
             return null;
-        } finally {
-            pendingRequests.delete(lowerUser);
         }
-    })();
-
-    pendingRequests.set(lowerUser, promise);
-    return promise;
+    });
 }
 
 /**
@@ -129,12 +122,12 @@ export async function batchGetPronouns(usernames: string[]): Promise<Map<string,
     // Check cache first
     for (const username of usernames) {
         const lower = username.toLowerCase();
-        if (pronounCache.has(lower)) {
-            const entry = pronounCache.get(lower)!;
-            if (Date.now() - entry.timestamp < CACHE_TTL && entry.data) {
-                results.set(lower, entry.data);
-                continue;
+        const cached = pronounCache.getCached(lower);
+        if (cached !== undefined) {
+            if (cached) {
+                results.set(lower, cached);
             }
+            continue;
         }
         uncached.push(lower);
     }
@@ -161,5 +154,5 @@ export async function batchGetPronouns(usernames: string[]): Promise<Map<string,
  * Clear the pronoun cache
  */
 export function clearPronounCache(): void {
-    // No-op: caching disabled
+    pronounCache.clear();
 }

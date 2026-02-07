@@ -8,30 +8,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/Input";
 import { Label } from "~/components/ui/Label";
 import { Switch } from "~/components/ui/Switch";
-
-const PRESET_FONTS = [
-    { name: 'Segoe UI', value: 'Segoe UI' },
-    { name: 'Inter', value: 'Inter' },
-    { name: 'Roboto', value: 'Roboto' },
-    { name: 'Open Sans', value: 'Open Sans' },
-    { name: 'Poppins', value: 'Poppins' },
-    { name: 'Montserrat', value: 'Montserrat' },
-    { name: 'Lato', value: 'Lato' },
-    { name: 'Playfair Display', value: 'Playfair Display' },
-    { name: 'Merriweather', value: 'Merriweather' },
-    { name: 'Space Grotesk', value: 'Space Grotesk' },
-    { name: 'Work Sans', value: 'Work Sans' },
-    { name: 'DM Sans', value: 'DM Sans' },
-    { name: 'Manrope', value: 'Manrope' },
-    { name: 'Nunito', value: 'Nunito' },
-    { name: 'Source Sans 3', value: 'Source Sans 3' },
-    { name: 'Fira Sans', value: 'Fira Sans' },
-    { name: 'Rubik', value: 'Rubik' },
-    { name: 'Raleway', value: 'Raleway' },
-    { name: 'Comic Neue', value: 'Comic Neue' },
-    { name: 'Comfortaa', value: 'Comfortaa' },
-    { name: 'Ubuntu', value: 'Ubuntu' },
-];
+import { PRESET_FONTS } from "~/utils/fonts";
+import { buildChatSearchParams } from "~/utils/chatConfig";
+import {
+    type ChatPlatform,
+    type PlatformTab,
+    getChannelPlaceholder,
+    getChannelPrefix,
+    getPlatformLabel,
+    sanitizeChannel,
+    supportsBadges,
+    supportsHighlights,
+    supportsNamePaints,
+    supportsNonVeloraHighlights,
+    supportsRoomState,
+} from "~/utils/platforms";
 
 export default function ChatSetup() {
     const location = useLocation();
@@ -43,11 +34,8 @@ export default function ChatSetup() {
         }
     });
 
-    type Platform = 'twitch' | 'kick' | 'youtube' | 'velora';
-    type PlatformTab = Platform | 'combined';
-
     const [platformTab, setPlatformTab] = createSignal<PlatformTab>('twitch');
-    const [combinedPlatforms, setCombinedPlatforms] = createSignal<Platform[]>(['twitch']);
+    const [combinedPlatforms, setCombinedPlatforms] = createSignal<ChatPlatform[]>(['twitch']);
     const [twitchChannel, setTwitchChannel] = createSignal("");
     const [kickChannel, setKickChannel] = createSignal("");
     const [youtubeChannel, setYoutubeChannel] = createSignal("");
@@ -96,10 +84,10 @@ export default function ChatSetup() {
         return selectedFont();
     };
 
-    const selectedPlatforms = () => platformTab() === 'combined' ? combinedPlatforms() : [platformTab() as Platform];
-    const sectionPlatforms = () => platformTab() === 'combined' ? combinedPlatforms() : [platformTab() as Platform];
+    const selectedPlatforms = () => platformTab() === 'combined' ? combinedPlatforms() : [platformTab() as ChatPlatform];
+    const sectionPlatforms = () => platformTab() === 'combined' ? combinedPlatforms() : [platformTab() as ChatPlatform];
 
-    const toggleCombinedPlatform = (value: Platform) => {
+    const toggleCombinedPlatform = (value: ChatPlatform) => {
         setCombinedPlatforms(prev => {
             if (prev.includes(value)) {
                 const next = prev.filter(p => p !== value);
@@ -109,12 +97,7 @@ export default function ChatSetup() {
         });
     };
 
-    const hasPlatform = (value: Platform) => selectedPlatforms().includes(value);
-    const supportsBadges = (value: Platform) => value === 'twitch' || value === 'kick' || value === 'youtube';
-    const supportsNamePaints = (value: Platform) => value === 'twitch' || value === 'kick' || value === 'youtube';
-    const supportsRoomState = (value: Platform) => value === 'twitch';
-    const supportsHighlights = (value: Platform) => value === 'twitch' || value === 'youtube' || value === 'velora';
-    const supportsNonVeloraHighlights = (value: Platform) => value === 'twitch' || value === 'youtube';
+    const hasPlatform = (value: ChatPlatform) => selectedPlatforms().includes(value);
     const anySupportsBadges = () => selectedPlatforms().some(supportsBadges);
     const anySupportsNamePaints = () => selectedPlatforms().some(supportsNamePaints);
     const anySupportsRoomState = () => selectedPlatforms().some(supportsRoomState);
@@ -127,7 +110,7 @@ export default function ChatSetup() {
         return 'Highlighted Messages';
     };
 
-    const getChannelForPlatform = (value: Platform) => {
+    const getChannelForPlatform = (value: ChatPlatform) => {
         switch (value) {
             case 'kick':
                 return kickChannel();
@@ -140,7 +123,7 @@ export default function ChatSetup() {
         }
     };
 
-    const setChannelForPlatform = (value: Platform, channelValue: string) => {
+    const setChannelForPlatform = (value: ChatPlatform, channelValue: string) => {
         switch (value) {
             case 'kick':
                 setKickChannel(channelValue);
@@ -156,143 +139,78 @@ export default function ChatSetup() {
         }
     };
 
-    const sanitizeChannel = (value: string, platform: Platform) => {
-        if (platform === 'youtube') {
-            return value.toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    const hasAnyChannel = () => selectedPlatforms().some((platform) => getChannelForPlatform(platform));
+
+    const getChatBasePath = () => {
+        if (platformTab() === 'combined') {
+            return '/chat/combined';
         }
-        if (platform === 'velora') {
-            return value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-        }
-        return value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const platform = platformTab() as ChatPlatform;
+        const channelValue = getChannelForPlatform(platform);
+        if (!channelValue) return '';
+        return `/chat/${platform}/${channelValue}`;
     };
 
-    const getChannelPlaceholder = (platform: Platform) => {
-        if (platform === 'kick') return "kick_username";
-        if (platform === 'youtube') return "youtube_handle";
-        if (platform === 'velora') return "velora_username";
-        return "twitch_username";
-    };
+    const renderPlatformLabel = (platform: ChatPlatform) => getPlatformLabel(platform);
 
-    const getChannelPrefix = (platform: Platform) => {
-        if (platform === 'kick') return "kick.com/";
-        if (platform === 'youtube') return "youtube.com/@";
-        if (platform === 'velora') return "velora.tv/";
-        return "twitch.tv/";
-    };
-
-    const getPrimaryChannel = () => {
-        for (const platform of selectedPlatforms()) {
-            const channelValue = getChannelForPlatform(platform);
-            if (channelValue) return channelValue;
-        }
-        return "";
-    };
-
-    const renderPlatformLabel = (platform: Platform) => {
-        if (platform === 'kick') return 'Kick';
-        if (platform === 'youtube') return 'YouTube';
-        if (platform === 'velora') return 'Velora';
-        return 'Twitch';
-    };
+    const buildParams = () => buildChatSearchParams({
+        platforms: selectedPlatforms(),
+        twitchChannel: twitchChannel(),
+        kickChannel: kickChannel(),
+        youtubeChannel: youtubeChannel(),
+        veloraChannel: veloraChannel(),
+        includePlatformsParam: platformTab() === 'combined',
+        includeChannelParams: platformTab() === 'combined',
+        showPlatformBadge: showPlatformBadge(),
+        showPronouns: showPronouns(),
+        pridePronouns: pridePronouns(),
+        showBadges: showBadges(),
+        showEmotes: showEmotes(),
+        showHighlights: showHighlights(),
+        showTimestamps: showTimestamps(),
+        showSharedChat: showSharedChat(),
+        showNamePaints: showNamePaints(),
+        showReplies: showReplies(),
+        showRoomState: showRoomState(),
+        hideCommands: hideCommands(),
+        hideBots: hideBots(),
+        maxMessages: maxMessages(),
+        fontFamily: getEffectiveFont(),
+        fontSize: fontSize(),
+        emoteScale: emoteScale(),
+        fadeOutMessages: fadeOutMessages(),
+        fadeOutDelayMs: fadeOutDelay() * 1000,
+        playSound: playSound(),
+        blockedUsers: blockedUsers(),
+        customBots: customBots(),
+        pageBackground: pageBackground(),
+        messageBgOpacity: getSafeMessageBgOpacity(),
+        textColor: textColor(),
+    });
 
     createEffect(() => {
-        const params = new URLSearchParams();
-        const selected = selectedPlatforms();
-        const hasTwitch = selected.includes('twitch');
-        const primaryChannel = getPrimaryChannel();
-
-        if (!primaryChannel) {
+        if (!hasAnyChannel()) {
             setPreviewUrl("");
             return;
         }
-
-        params.set('platforms', selected.join(','));
-        if (hasPlatform('twitch') && twitchChannel()) params.set('twitch', twitchChannel());
-        if (hasPlatform('kick') && kickChannel()) params.set('kick', kickChannel());
-        if (hasPlatform('youtube') && youtubeChannel()) params.set('youtube', youtubeChannel());
-        if (hasPlatform('velora') && veloraChannel()) params.set('velora', veloraChannel());
-        if (!showPlatformBadge()) params.set('platformBadge', 'false');
-        if (hasTwitch) {
-            if (!showPronouns()) params.set('pronouns', 'false');
+        const basePath = getChatBasePath();
+        if (!basePath) {
+            setPreviewUrl("");
+            return;
         }
-        if (!showBadges()) params.set('badges', 'false');
-        if (!showEmotes()) params.set('emotes', 'false');
-        if (!showHighlights()) params.set('highlights', 'false');
-        if (showTimestamps()) params.set('timestamps', 'true');
-        if (hasTwitch) {
-            if (!showSharedChat()) params.set('shared', 'false');
-            if (showRoomState()) params.set('roomState', 'true');
-            if (!showReplies()) params.set('replies', 'false');
-        }
-        if (!showNamePaints()) params.set('paints', 'false');
-        if (hideCommands()) params.set('hideCommands', 'true');
-        if (hideBots()) params.set('hideBots', 'true');
-        if (maxMessages() !== 50) params.set('maxMessages', String(maxMessages()));
-        const font = getEffectiveFont();
-        if (font !== 'Segoe UI') params.set('font', font);
-        if (fontSize() !== 16) params.set('fontSize', String(fontSize()));
-        if (emoteScale() !== 1.0) params.set('emoteScale', String(emoteScale()));
-        if (fadeOutMessages()) {
-            params.set('fadeOut', 'true');
-            if (fadeOutDelay() !== 30) params.set('fadeDelay', String(fadeOutDelay() * 1000));
-        }
-        if (playSound()) params.set('sound', 'true');
-        if (blockedUsers().trim()) params.set('blocked', blockedUsers().trim());
-        if (customBots().trim()) params.set('bots', customBots().trim());
-        if (pridePronouns()) params.set('pridePronouns', 'true');
-        if (pageBackground() !== 'transparent') params.set('bg', pageBackground());
-        const msgBg = getSafeMessageBgOpacity();
-        if (msgBg > 0) params.set('msgBg', msgBg.toFixed(2));
-        if (textColor().toLowerCase() !== '#ffffff') params.set('textColor', textColor());
-
-        const queryString = params.toString();
-        setPreviewUrl(`/chat/${primaryChannel}?${queryString}`);
+        const params = buildParams();
+        const query = params.toString();
+        setPreviewUrl(query ? `${basePath}?${query}` : basePath);
     });
 
     const generateUrl = () => {
-        const primaryChannel = getPrimaryChannel();
-        if (!primaryChannel) return "";
-        const base = `${typeof window !== 'undefined' ? window.location.origin : ''}/chat/${primaryChannel}`;
+        if (!hasAnyChannel()) return "";
+        const basePath = getChatBasePath();
+        if (!basePath) return "";
+        const base = `${typeof window !== 'undefined' ? window.location.origin : ''}${basePath}`;
         const url = new URL(base);
-        const selected = selectedPlatforms();
-        const hasTwitch = selected.includes('twitch');
-        url.searchParams.set('platforms', selected.join(','));
-        if (hasPlatform('twitch') && twitchChannel()) url.searchParams.set('twitch', twitchChannel());
-        if (hasPlatform('kick') && kickChannel()) url.searchParams.set('kick', kickChannel());
-        if (hasPlatform('youtube') && youtubeChannel()) url.searchParams.set('youtube', youtubeChannel());
-        if (hasPlatform('velora') && veloraChannel()) url.searchParams.set('velora', veloraChannel());
-        if (!showPlatformBadge()) url.searchParams.set('platformBadge', 'false');
-        if (hasTwitch) {
-            if (!showPronouns()) url.searchParams.set('pronouns', 'false');
-        }
-        if (!showBadges()) url.searchParams.set('badges', 'false');
-        if (!showEmotes()) url.searchParams.set('emotes', 'false');
-        if (!showHighlights()) url.searchParams.set('highlights', 'false');
-        if (showTimestamps()) url.searchParams.set('timestamps', 'true');
-        if (hasTwitch) {
-            if (!showSharedChat()) url.searchParams.set('shared', 'false');
-            if (showRoomState()) url.searchParams.set('roomState', 'true');
-            if (!showReplies()) url.searchParams.set('replies', 'false');
-        }
-        if (!showNamePaints()) url.searchParams.set('paints', 'false');
-        if (hideCommands()) url.searchParams.set('hideCommands', 'true');
-        if (hideBots()) url.searchParams.set('hideBots', 'true');
-        if (maxMessages() !== 50) url.searchParams.set('maxMessages', String(maxMessages()));
-        if (fontSize() !== 16) url.searchParams.set('fontSize', String(fontSize()));
-        if (emoteScale() !== 1.0) url.searchParams.set('emoteScale', String(emoteScale()));
-        if (fadeOutMessages()) {
-            url.searchParams.set('fadeOut', 'true');
-            if (fadeOutDelay() !== 30) url.searchParams.set('fadeDelay', String(fadeOutDelay() * 1000));
-        }
-        if (playSound()) url.searchParams.set('sound', 'true');
-        if (blockedUsers().trim()) url.searchParams.set('blocked', blockedUsers().trim());
-        if (customBots().trim()) url.searchParams.set('bots', customBots().trim());
-        const font = getEffectiveFont();
-        if (font !== 'Segoe UI') url.searchParams.set('font', font);
-        if (pageBackground() !== 'transparent') url.searchParams.set('bg', pageBackground());
-        const msgBg = getSafeMessageBgOpacity();
-        if (msgBg > 0) url.searchParams.set('msgBg', msgBg.toFixed(2));
-        if (textColor().toLowerCase() !== '#ffffff') url.searchParams.set('textColor', textColor());
+        const params = buildParams();
+        params.forEach((value, key) => url.searchParams.set(key, value));
         return url.toString();
     };
 
@@ -373,7 +291,7 @@ export default function ChatSetup() {
 
                                     <Show when={platformTab() !== 'combined'}>
                                         {(() => {
-                                            const current = platformTab() as Platform;
+                                            const current = platformTab() as ChatPlatform;
                                             return (
                                                 <div class="space-y-2">
                                                     <Label>Channel</Label>
@@ -402,7 +320,7 @@ export default function ChatSetup() {
                                                 { id: 'velora', label: 'Velora', color: 'text-amber-300', prefix: 'velora.tv/' },
                                             ]}>
                                                 {(entry) => {
-                                                    const enabled = () => combinedPlatforms().includes(entry.id as Platform);
+                                                    const enabled = () => combinedPlatforms().includes(entry.id as ChatPlatform);
                                                     return (
                                                         <div class="rounded-md border border-slate-800 p-3">
                                                             <div class="flex items-center justify-between">
@@ -410,7 +328,7 @@ export default function ChatSetup() {
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={enabled()}
-                                                                        onChange={() => toggleCombinedPlatform(entry.id as Platform)}
+                                                                        onChange={() => toggleCombinedPlatform(entry.id as ChatPlatform)}
                                                                         class="h-4 w-4 accent-cyan-400"
                                                                     />
                                                                     <span class={"text-sm font-semibold " + entry.color}>{entry.label}</span>
@@ -420,8 +338,8 @@ export default function ChatSetup() {
                                                             <div class="mt-2">
                                                                 <Input
                                                                     placeholder={`${entry.label.toLowerCase()}_username`}
-                                                                    value={getChannelForPlatform(entry.id as Platform)}
-                                                                    onInput={(e) => setChannelForPlatform(entry.id as Platform, sanitizeChannel(e.currentTarget.value, entry.id as Platform))}
+                                                                    value={getChannelForPlatform(entry.id as ChatPlatform)}
+                                                                    onInput={(e) => setChannelForPlatform(entry.id as ChatPlatform, sanitizeChannel(e.currentTarget.value, entry.id as ChatPlatform))}
                                                                     disabled={!enabled()}
                                                                 />
                                                             </div>

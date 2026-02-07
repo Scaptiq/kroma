@@ -1,0 +1,1109 @@
+/* Chat Container */
+.chat-container {
+    width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    /* Space between messages */
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    box-sizing: border-box;
+    overflow-anchor: none;
+}
+
+/* Message styling */
+.chat-message {
+    position: relative;
+    color: var(--chat-text-color);
+    font-size: var(--chat-font-size, 14px);
+    font-family: inherit;
+    line-height: 1.5;
+    transition: opacity 0.3s ease;
+    animation: slideIn 0.2s ease-out both;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.message-bubble {
+    padding: 0.6rem 0.8rem;
+    background: rgba(10, 10, 12, var(--message-bg-alpha, 0));
+    /* backdrop-filter: blur(8px); */
+    /* -webkit-backdrop-filter: blur(8px); */
+    border-radius: 12px;
+    border: none;
+    box-shadow: none;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    width: fit-content;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    color: var(--chat-text-color);
+}
+
+/* Message Parts */
+.username {
+    font-weight: 700;
+    margin-right: 0.3em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    /* Better readability for colored names */
+}
+
+.username--painted {
+    text-shadow: none;
+}
+
+.timestamp {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8em;
+    margin-right: 0.5em;
+    font-variant-numeric: tabular-nums;
+}
+
+.message-content {
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Velora Message Effects */
+.velora-effect {
+    position: relative;
+    isolation: isolate;
+}
+
+.velora-effect .message-content {
+    position: relative;
+    z-index: 1;
+}
+
+.velora-effect--glow .message-content {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.velora-effect--glow {
+    overflow: visible;
+    border: 2px solid var(--velora-effect-color, #ff6b6b);
+    box-shadow:
+        0 0 10px 2px color-mix(in srgb, var(--velora-effect-color, #ff6b6b), transparent 45%),
+        0 0 24px 6px color-mix(in srgb, var(--velora-effect-color, #ff6b6b), transparent 70%);
+    background: rgba(18, 18, 22, 0.92);
+}
+
+.velora-effect--rainbow .message-content {
+    text-shadow: none;
+    color: var(--chat-text-color);
+    background: none;
+    animation: none;
+}
+
+.velora-effect--rainbow {
+    overflow: visible;
+    border: 2px solid transparent;
+    background-image:
+        linear-gradient(rgba(18, 18, 22, 0.92), rgba(18, 18, 22, 0.92)),
+        linear-gradient(90deg, #ff4d4d, #f59e0b, #facc15, #22c55e, #38bdf8, #a855f7, #ff4d4d);
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
+    background-size: auto, 200% 100%;
+    animation: velora-rainbow 3s linear infinite;
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.12);
+}
+
+.velora-effect--gigantify .message-content {
+    font-size: 2em;
+    line-height: 1.2;
+    display: block;
+    margin-top: 0.35rem;
+    transform-origin: left center;
+    animation: velora-bounce 0.9s ease-in-out infinite;
+}
+
+.velora-effect--gigantify {
+    overflow: visible;
+    padding-top: 1.25rem;
+    padding-bottom: 1.15rem;
+    min-height: calc(var(--chat-font-size, 14px) * 3.1);
+    margin-bottom: 0;
+}
+
+.velora-effect--galaxy::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1px, transparent 2px),
+        radial-gradient(circle at 70% 40%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px),
+        radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.45) 0 1px, transparent 2px),
+        radial-gradient(circle at 85% 70%, rgba(255, 255, 255, 0.35) 0 1px, transparent 2px),
+        radial-gradient(circle at 10% 65%, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px);
+    background-size: 120px 120px;
+    opacity: 0.75;
+    animation: velora-galaxy 6s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+.velora-effect--galaxy {
+    overflow: hidden;
+    border: 2px solid var(--velora-effect-color, rgba(168, 85, 247, 0.9));
+    box-shadow: 0 0 16px color-mix(in srgb, var(--velora-effect-color, #a855f7), transparent 55%);
+    background: radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--velora-effect-color, #8b5cf6), transparent 55%), rgba(12, 12, 18, 0.92));
+}
+
+@keyframes velora-rainbow {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+@keyframes velora-bounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes velora-galaxy {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Emotes */
+.emote {
+    display: inline-block;
+    vertical-align: middle;
+    margin: -4px 2px;
+    height: calc(1.2em * var(--emote-scale, 1));
+    /* Pull emotes slightly to align with text baseline */
+    transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+.chat-message[data-fading="true"] {
+    animation: slideIn 0.2s ease-out both, fadeOut 1s linear forwards;
+    animation-delay: 0s, var(--fade-delay);
+}
+
+.emote:hover {
+    transform: scale(1.2);
+    /* Fun hover effect */
+    z-index: 10;
+}
+
+.emote-unavailable {
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.zero-width-emote {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    /* Let clicks pass through */
+    z-index: 1;
+    /* Sit on top */
+}
+
+.emote-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Badges */
+.badges {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+    gap: 2px;
+    /* Space between badges */
+}
+
+.badge {
+    display: inline-block;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 2px;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.platform-logo {
+    height: 18px;
+    width: 18px;
+    object-fit: contain;
+    opacity: 0.95;
+}
+
+.pronouns-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #a855f7;
+    /* Solid Kroma Purple */
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.65em;
+    font-weight: 800;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+    line-height: 1;
+    margin-right: 2px;
+}
+
+/* Colored Pronoun Badge (color applied via inline styles) */
+.pronouns-badge--colored {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.65em;
+    font-weight: 800;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
+    box-shadow: 0 0 8px currentColor;
+    line-height: 1;
+    margin-right: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Pride Rainbow Pronoun Badge */
+.pronouns-badge--pride {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg,
+            #E40303 0%,
+            #FF8C00 20%,
+            #FFED00 40%,
+            #008026 60%,
+            #24408E 80%,
+            #732982 100%);
+    background-size: 200% 200%;
+    animation: pride-shimmer 3s ease infinite;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.65em;
+    font-weight: 800;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
+    box-shadow: 0 0 12px rgba(255, 140, 0, 0.4), 0 0 20px rgba(115, 41, 130, 0.3);
+    line-height: 1;
+    margin-right: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.platform-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 0.6em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-right: 0.35em;
+    line-height: 1;
+}
+
+.platform-badge--twitch {
+    background: rgba(145, 71, 255, 0.2);
+    color: #c4b5fd;
+    border: 1px solid rgba(145, 71, 255, 0.45);
+}
+
+.platform-badge--kick {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+}
+
+.kick-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.6em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.kick-badge__count {
+    font-size: 0.75em;
+    opacity: 0.85;
+}
+
+.kick-badge--moderator {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #86efac;
+}
+
+.kick-badge--subscriber {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+}
+
+.kick-badge--vip {
+    background: rgba(244, 114, 182, 0.2);
+    border-color: rgba(244, 114, 182, 0.5);
+    color: #f9a8d4;
+}
+
+.kick-badge--founder {
+    background: rgba(250, 204, 21, 0.2);
+    border-color: rgba(250, 204, 21, 0.5);
+    color: #fde047;
+}
+
+.kick-badge--og {
+    background: rgba(148, 163, 184, 0.2);
+    border-color: rgba(148, 163, 184, 0.5);
+    color: #e2e8f0;
+}
+
+@keyframes pride-shimmer {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Animations */
+@keyframes slideIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Replies styling */
+.reply-context {
+    background: rgba(145, 71, 255, 0.15);
+    /* Twitch purple tint */
+    border-left: 3px solid #9147ff;
+    padding: 2px 6px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    /* Ensure it wraps content nicely */
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* System/Event Messages */
+.message-system {
+    background: linear-gradient(90deg, rgba(100, 65, 165, 0.8) 0%, rgba(100, 65, 165, 0.4) 100%);
+    border-left: 4px solid #a970ff;
+    font-weight: 600;
+}
+
+/* Subscription Messages */
+.message-sub,
+.message-resub {
+    background: linear-gradient(135deg, rgba(145, 71, 255, 0.4) 0%, rgba(145, 71, 255, 0.15) 100%);
+    border-left: 4px solid #9147ff;
+    position: relative;
+    overflow: hidden;
+}
+
+.message-sub::before,
+.message-resub::before {
+    content: '⭐';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5em;
+    opacity: 0.3;
+}
+
+/* Gift Sub Messages */
+.message-subgift,
+.message-submysterygift {
+    background: linear-gradient(135deg, rgba(0, 200, 127, 0.4) 0%, rgba(0, 200, 127, 0.15) 100%);
+    border-left: 4px solid #00c87f;
+    position: relative;
+    overflow: hidden;
+}
+
+.message-subgift::before,
+.message-submysterygift::before {
+    content: '🎁';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.5em;
+    opacity: 0.4;
+}
+
+/* Velora Gift Card */
+.message-velora-giftcard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-giftcard::before,
+.message-velora-giftcard::after {
+    content: none !important;
+}
+
+.chat-message--velora-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.chat-message--velora-card::before,
+.chat-message--velora-card::after {
+    content: none !important;
+}
+
+.message-velora-subcard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-subcard::before,
+.message-velora-subcard::after {
+    content: none !important;
+}
+
+.message-velora-pointscard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-pointscard::before,
+.message-velora-pointscard::after {
+    content: none !important;
+}
+
+.message-velora-voltscard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-voltscard::before,
+.message-velora-voltscard::after {
+    content: none !important;
+}
+
+.velora-giftcard {
+    --velora-accent: #b9a7ff;
+    background: radial-gradient(120% 120% at 0% 0%, rgba(88, 68, 140, 0.35), rgba(22, 18, 38, 0.95) 55%),
+        linear-gradient(160deg, rgba(30, 24, 50, 0.98), rgba(14, 12, 24, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    box-shadow: none;
+    outline: none;
+    filter: none;
+    background-clip: padding-box;
+    border-radius: 22px;
+    padding: 16px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #efe9ff;
+}
+
+.velora-giftcard__header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.velora-giftcard__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--velora-accent) 18%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    overflow: hidden;
+}
+
+.velora-giftcard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-giftcard__header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.velora-giftcard__gifter {
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.2px;
+}
+
+.velora-giftcard__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 45%, transparent);
+    background: color-mix(in srgb, var(--velora-accent) 16%, rgba(45, 35, 80, 0.6));
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #f2ecff;
+}
+
+.velora-giftcard__pill-icon {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.velora-giftcard__recipients {
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    background: rgba(18, 14, 30, 0.7);
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.velora-giftcard__recipients-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(230, 220, 255, 0.65);
+    margin-bottom: 6px;
+}
+
+.velora-giftcard__recipients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.95rem;
+}
+
+.velora-giftcard__message {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: rgba(230, 220, 255, 0.8);
+    line-height: 1.2;
+}
+
+.velora-giftcard__recipient {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #efe9ff;
+}
+
+.velora-giftcard__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 70%, #ffffff);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--velora-accent) 45%, transparent);
+}
+
+.velora-subcard {
+    --velora-accent: #7db4ff;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: radial-gradient(140% 140% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(10, 20, 40, 0.95) 60%),
+        linear-gradient(160deg, rgba(12, 24, 44, 0.98), rgba(9, 16, 30, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 40%, transparent);
+    border-radius: 20px;
+    padding: 14px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #eef4ff;
+}
+
+.velora-subcard__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--velora-accent) 22%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--velora-accent) 45%, transparent);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.velora-subcard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-subcard__text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.velora-subcard__name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #f6f9ff;
+}
+
+.velora-subcard__status {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(200, 220, 245, 0.8);
+}
+
+.velora-subcard__tier {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 18%, rgba(35, 60, 90, 0.7));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 55%, transparent);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: #e7f0ff;
+    flex-shrink: 0;
+}
+
+.velora-pointscard {
+    --velora-accent: #c4a8ff;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: radial-gradient(140% 140% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(18, 10, 35, 0.96) 60%),
+        linear-gradient(160deg, rgba(24, 16, 45, 0.98), rgba(14, 8, 28, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 45%, transparent);
+    border-radius: 20px;
+    padding: 14px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #f2ecff;
+}
+
+.velora-pointscard__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--velora-accent) 20%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--velora-accent) 45%, transparent);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.velora-pointscard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-pointscard__text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.velora-pointscard__name {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: #f7f1ff;
+}
+
+.velora-pointscard__status {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: rgba(220, 205, 255, 0.75);
+}
+
+.velora-pointscard__pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 20%, rgba(70, 45, 120, 0.7));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 55%, transparent);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    color: #f4eeff;
+    flex-shrink: 0;
+}
+
+.velora-voltscard {
+    --velora-accent: #9bdcff;
+    background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(12, 14, 24, 0.95) 60%),
+        linear-gradient(160deg, rgba(14, 16, 28, 0.98), rgba(10, 12, 20, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 38%, transparent);
+    border-radius: 22px;
+    padding: 16px 18px;
+    min-width: 320px;
+    max-width: 360px;
+    color: #e8f8ff;
+}
+
+.velora-voltscard__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.velora-voltscard__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--velora-accent) 18%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.velora-voltscard__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.velora-voltscard__header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.velora-voltscard__name {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: #f3fbff;
+}
+
+.velora-voltscard__pill {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 18%, rgba(30, 25, 45, 0.7));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 50%, transparent);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 2.2px;
+    color: #f2f7ff;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.velora-voltscard__message {
+    font-size: 0.8rem;
+    color: rgba(210, 240, 255, 0.85);
+    line-height: 1.2;
+}
+
+.velora-voltscard__bolt {
+    font-size: 14px;
+    opacity: 0.85;
+}
+
+/* Raid Messages */
+.message-raid {
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.5) 0%, rgba(255, 107, 107, 0.2) 100%);
+    border-left: 4px solid #ff6b6b;
+    position: relative;
+    overflow: hidden;
+    animation: raid-pulse 2s ease-in-out infinite;
+}
+
+.message-raid::before {
+    content: '🎉';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.8em;
+    opacity: 0.5;
+    animation: raid-bounce 1s ease-in-out infinite;
+}
+
+@keyframes raid-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px rgba(255, 107, 107, 0.2);
+    }
+}
+
+@keyframes raid-bounce {
+
+    0%,
+    100% {
+        transform: translateY(-50%) scale(1);
+    }
+
+    50% {
+        transform: translateY(-50%) scale(1.1);
+    }
+}
+
+/* Mod Action Messages (timeout/ban) */
+.message-modaction {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.3) 0%, rgba(255, 152, 0, 0.1) 100%);
+    border-left: 4px solid #ff9800;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+/* Deleted Messages */
+.message-deleted {
+    opacity: 0.4;
+    text-decoration: line-through;
+    filter: grayscale(50%);
+}
+
+/* Room State Indicators */
+.room-state-bar {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.room-state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: slideDown 0.3s ease-out;
+}
+
+.room-state-badge--slow {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.9), rgba(255, 152, 0, 0.9));
+    box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+.room-state-badge--emote {
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.9), rgba(103, 58, 183, 0.9));
+    box-shadow: 0 2px 10px rgba(156, 39, 176, 0.3);
+}
+
+.room-state-badge--followers {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.9), rgba(3, 169, 244, 0.9));
+    box-shadow: 0 2px 10px rgba(33, 150, 243, 0.3);
+}
+
+.room-state-badge--subs {
+    background: linear-gradient(135deg, rgba(145, 71, 255, 0.9), rgba(168, 85, 247, 0.9));
+    box-shadow: 0 2px 10px rgba(145, 71, 255, 0.3);
+}
+
+.room-state-badge--r9k {
+    background: linear-gradient(135deg, rgba(96, 125, 139, 0.9), rgba(69, 90, 100, 0.9));
+    box-shadow: 0 2px 10px rgba(96, 125, 139, 0.3);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* First Message Indicator */
+.first-message-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f472b6, #c084fc);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.7em;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.4);
+}
+
+/* Text Selection */
+::selection {
+    background: rgba(169, 112, 255, 0.5);
+    /* Highlight color */
+    color: white;
+}
+
+/* Scrollbar (if content overflows) - usually hidden but styled just in case */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Custom Slider */
+.styled-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    outline: none;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.styled-slider:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.styled-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #a855f7;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    transition: transform 0.1s ease;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.styled-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    background: #c084fc;
+}
+
+.styled-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #a855f7;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    transition: transform 0.1s ease;
+}
+
+.styled-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    background: #c084fc;
+}

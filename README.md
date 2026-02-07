@@ -123,7 +123,18 @@ Badges appear at the top of the overlay when chat restrictions are active:
 
 ## 🛠 URL Parameters
 
-For advanced users, you can configure the overlay via URL:
+For advanced users, you can configure the overlay via URL.
+
+**Base URLs**
+
+| Mode | Base URL |
+|------|----------|
+| Single platform | `/chat/{platform}/{channel}` |
+| Combined | `/chat/combined` |
+
+Supported `{platform}` values: `twitch`, `kick`, `youtube`, `velora`.
+
+Legacy URLs like `/chat/{channel}` still work and redirect to the canonical path.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -158,9 +169,12 @@ For advanced users, you can configure the overlay via URL:
 | `blocked` | string | | Comma-separated blocked users |
 | `bots` | string | | Comma-separated custom bots |
 
-### Example
+### Examples
 ```
-https://kroma.scaptiq.live/chat/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
+https://kroma.scaptiq.live/chat/twitch/yourChannel?pridePronouns=true&fontSize=20&font=Comic+Neue
+```
+```
+https://kroma.scaptiq.live/chat/combined?platforms=twitch,youtube&twitch=yourChannel&youtube=yourChannel
 ```
 
 ---

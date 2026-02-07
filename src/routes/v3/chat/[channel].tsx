@@ -2,6 +2,13 @@ import { useParams, useSearchParams, useLocation, useNavigate } from "solid-star
 import { createSignal, onMount, onCleanup, For, Show, createEffect, createMemo } from "solid-js";
 import tmi from "tmi.js";
 import MySiteTitle from "~/components/MySiteTitle";
+import ChatMessageItem from "~/chat/components/ChatMessage";
+import RoomStateBar, { type RoomState } from "~/chat/components/RoomStateBar";
+import { createEmoteFinder, loadYouTubeEmojiMap, parseKickMessageContent as parseKickMessageContentBase, parseTwitchMessageContent as parseTwitchMessageContentBase, parseVeloraMessageContent as parseVeloraMessageContentBase, parseYouTubeMessageContent as parseYouTubeMessageContentBase, type EmoteSources } from "~/chat/messagePipeline";
+import { createSoundPlayer, formatTime, generateColor, getMessageBubbleClass, getMessageClass, isClearChatNotice } from "~/chat/messageUtils";
+import { fetchKickChannelData, fetchTwitchUserByLogin, fetchVeloraBadgesCatalog, fetchVeloraBadgesForChannel, fetchVeloraEmotes, fetchVeloraHistory, fetchYouTubeLiveChat, fetchYouTubeMessages, resolveVeloraEmotes as resolveVeloraEmotesClient, resolveVeloraUser } from "~/chat/platformClients";
+import { parseChatConfig, type ChatConfig } from "~/utils/chatConfig";
+import "~/styles/chat.css";
 
 // Utils
 import { getUserPronounInfo } from "~/utils/pronouns";
@@ -19,89 +26,14 @@ import {
 import {
     fetch7TVGlobalEmotes, fetch7TVChannelEmotes,
     fetchBTTVGlobalEmotes, fetchBTTVChannelEmotes,
-    fetchFFZGlobalEmotes, fetchFFZChannelEmotes,
-    type Emote
+    fetchFFZGlobalEmotes, fetchFFZChannelEmotes
 } from "~/utils/emotes";
 import {
     type ChatMessage,
     type MessageType,
     type ParsedPart,
-    type ReplyInfo,
-    getMessageBackgroundColor,
-    ZERO_WIDTH_EMOTES,
-    getCheerTierColor
+    type ReplyInfo
 } from "~/utils/messageTypes";
-
-// Configuration interface
-type ChatPlatform = 'twitch' | 'kick' | 'youtube' | 'velora';
-
-interface ChatConfig {
-    platforms: ChatPlatform[];
-    twitchChannel: string;
-    kickChannel: string;
-    youtubeChannel: string;
-    veloraChannel: string;
-    showPlatformBadge: boolean;
-    showPronouns: boolean;
-    pridePronouns: boolean;  // Use rainbow pride gradient for pronoun badges
-    showBadges: boolean;
-    showEmotes: boolean;
-    showHighlights: boolean;
-    showTimestamps: boolean;
-    showSharedChat: boolean;
-    showNamePaints: boolean;
-    showReplies: boolean;
-    showFirstMessage: boolean;
-    playSound: boolean;
-    maxMessages: number;
-    hideCommands: boolean;
-    hideBots: boolean;
-    fadeOutMessages: boolean;
-    fadeOutDelay: number;
-    fontSize: number;
-    fontFamily: string;
-    emoteScale: number;
-    blockedUsers: string[];
-    customBots: string[];
-    showRoomState: boolean;
-    pageBackground: 'transparent' | 'dim' | 'dark';
-    messageBgOpacity: number;
-    textColor: string;
-}
-
-const DEFAULT_CONFIG: ChatConfig = {
-    platforms: ['twitch'],
-    twitchChannel: '',
-    kickChannel: '',
-    youtubeChannel: '',
-    veloraChannel: '',
-    showPlatformBadge: true,
-    showPronouns: true,
-    pridePronouns: false,  // Default to standard purple badges
-    showBadges: true,
-    showEmotes: true,
-    showHighlights: true,
-    showTimestamps: false,
-    showSharedChat: true,
-    showNamePaints: true,
-    showReplies: true,
-    showFirstMessage: true,
-    playSound: false,
-    maxMessages: 50,
-    hideCommands: false,
-    hideBots: false,
-    fadeOutMessages: false,
-    fadeOutDelay: 30000,
-    fontSize: 16,
-    fontFamily: 'Segoe UI',
-    emoteScale: 1.0,
-    blockedUsers: [],
-    customBots: [],
-    showRoomState: false,
-    pageBackground: 'transparent',
-    messageBgOpacity: 0,
-    textColor: '#ffffff',
-};
 
 // Known bot usernames
 const KNOWN_BOTS = new Set([
@@ -112,14 +44,20 @@ const KNOWN_BOTS = new Set([
 ]);
 
 export default function Chat() {
-    const params = useParams<{ channel: string }>();
+    const params = useParams<{ channel?: string; platform?: string }>();
     const [searchParams] = useSearchParams();
     const location = useLocation();
     const navigate = useNavigate();
 
     createEffect(() => {
         if (location.pathname.startsWith('/v3/')) {
-            const nextPath = `/chat/${params.channel || ''}${location.search}`;
+            const nextConfig = parseChatConfig(params, searchParams);
+            const platforms = nextConfig.platforms;
+            const channelSegment = params.channel ? `/${params.channel}` : '';
+            const basePath = platforms.length > 1
+                ? '/chat/combined'
+                : `/chat/${platforms[0]}${channelSegment}`;
+            const nextPath = `${basePath}${location.search}`;
             navigate(nextPath, { replace: true });
         }
     });
@@ -133,13 +71,7 @@ export default function Chat() {
     const [channelId, setChannelId] = createSignal<string | null>(null);
 
     // Room State (slow mode, emote-only, etc.)
-    const [roomState, setRoomState] = createSignal<{
-        slowMode: number;        // 0 = off, >0 = seconds between messages
-        emoteOnly: boolean;      // Emote-only mode
-        followersOnly: number;   // -1 = off, 0 = all followers, >0 = minutes required
-        subsOnly: boolean;       // Subscribers-only mode
-        r9k: boolean;            // R9K/unique mode
-    }>({
+    const [roomState, setRoomState] = createSignal<RoomState>({
         slowMode: 0,
         emoteOnly: false,
         followersOnly: -1,
@@ -164,7 +96,6 @@ export default function Chat() {
     let youtubeLiveChatId: string | null = null;
     let youtubeSeenMessageIds = new Set<string>();
     let youtubeEmojiMap: Map<string, string> | null = null;
-    let youtubeEmojiMapPromise: Promise<Map<string, string>> | null = null;
     let veloraPollTimer: number | undefined;
     let veloraSeenMessageIds = new Set<string>();
     let veloraChannelId: string | null = null;
@@ -177,85 +108,29 @@ export default function Chat() {
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
-    let global7TV: Emote[] = [];
-    let channel7TV: Emote[] = [];
-    let channel7TVKick: Emote[] = [];
-    let channel7TVYouTube: Emote[] = [];
-    let globalBTTV: Emote[] = [];
-    let channelBTTV: Emote[] = [];
-    let globalFFZ: Emote[] = [];
-    let channelFFZ: Emote[] = [];
+    const emoteSources: EmoteSources = {
+        global7TV: [],
+        channel7TV: [],
+        channel7TVKick: [],
+        channel7TVYouTube: [],
+        globalBTTV: [],
+        channelBTTV: [],
+        globalFFZ: [],
+        channelFFZ: [],
+    };
+    const findEmote = createEmoteFinder(emoteSources);
 
     // Parse config from URL params reactively
-    const config = createMemo<ChatConfig>(() => {
-        const platformsParam = searchParams.platforms
-            ? searchParams.platforms.split(',').map(p => p.trim().toLowerCase()).filter(Boolean)
-            : [];
-        const legacy = searchParams.platform?.toLowerCase();
-        const rawPlatforms = platformsParam.length > 0
-            ? platformsParam
-            : legacy === 'combined' || legacy === 'both'
-                ? ['twitch', 'kick']
-                : legacy === 'kick'
-                    ? ['kick']
-                    : legacy === 'youtube'
-                        ? ['youtube']
-                        : legacy === 'velora'
-                            ? ['velora']
-                        : ['twitch'];
-        const platforms = rawPlatforms.filter(p => p === 'twitch' || p === 'kick' || p === 'youtube' || p === 'velora');
-        if (platforms.length === 0) platforms.push('twitch');
-        const hasTwitch = platforms.includes('twitch');
-        const fallbackChannel = (params.channel || '').toLowerCase();
-        const twitchChannel = (searchParams.twitch || (platforms.includes('twitch') ? fallbackChannel : '')).toLowerCase();
-        const kickChannel = (searchParams.kick || (platforms.includes('kick') ? fallbackChannel : '')).toLowerCase();
-        const youtubeChannel = (searchParams.youtube || (platforms.includes('youtube') ? fallbackChannel : '')).toLowerCase();
-        const veloraChannel = (searchParams.velora || (platforms.includes('velora') ? fallbackChannel : '')).toLowerCase();
-
-        const fontFamilyRaw = searchParams.font || 'Segoe UI';
-        const fontFamily = fontFamilyRaw.replace(/\+/g, ' ');
-        const pageBackgroundRaw = String(searchParams.bg || 'transparent').toLowerCase();
-        const pageBackground = pageBackgroundRaw === 'dark' || pageBackgroundRaw === 'dim' ? pageBackgroundRaw : 'transparent';
-        const messageBgOpacityRaw = parseFloat(String(searchParams.msgBg || '0'));
-        const messageBgOpacity = Number.isFinite(messageBgOpacityRaw)
-            ? Math.min(0.9, Math.max(0, messageBgOpacityRaw))
-            : 0;
-        const textColorRaw = String(searchParams.textColor || '#ffffff').trim();
-        const textColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColorRaw) ? textColorRaw : '#ffffff';
-
-        return {
-            ...DEFAULT_CONFIG,
-            platforms: platforms as ChatPlatform[],
-            twitchChannel,
-            kickChannel,
-            youtubeChannel,
-            veloraChannel,
-            showPlatformBadge: searchParams.platformBadge !== 'false',
-            showPronouns: searchParams.pronouns !== 'false' && hasTwitch,
-            pridePronouns: searchParams.pridePronouns === 'true',
-            showBadges: searchParams.badges !== 'false',
-            showEmotes: searchParams.emotes !== 'false',
-            showHighlights: searchParams.highlights !== 'false',
-            showTimestamps: searchParams.timestamps === 'true',
-            showSharedChat: searchParams.shared !== 'false' && hasTwitch,
-            showNamePaints: searchParams.paints !== 'false',
-            playSound: searchParams.sound === 'true',
-            hideCommands: searchParams.hideCommands === 'true',
-            hideBots: searchParams.hideBots === 'true',
-            showReplies: searchParams.replies !== 'false' && hasTwitch,
-            maxMessages: parseInt(searchParams.maxMessages || '50') || 50,
-            fontSize: parseInt(searchParams.fontSize || '16') || 16,
-            fontFamily,
-            fadeOutMessages: searchParams.fadeOut === 'true',
-            fadeOutDelay: parseInt(searchParams.fadeDelay || '30000') || 30000,
-            emoteScale: parseFloat(searchParams.emoteScale || '1') || 1,
-            blockedUsers: searchParams.blocked ? searchParams.blocked.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-            customBots: searchParams.bots ? searchParams.bots.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [],
-            showRoomState: searchParams.roomState === 'true' && hasTwitch,
-            pageBackground,
-            messageBgOpacity,
-            textColor,
-        };
+    const config = createMemo<ChatConfig>(() => parseChatConfig(params, searchParams));
+    const title = createMemo(() => {
+        const platforms = config().platforms;
+        if (platforms.length > 1 || params.platform === 'combined') return 'Combined Chat';
+        const channel = params.channel
+            || config().twitchChannel
+            || config().kickChannel
+            || config().youtubeChannel
+            || config().veloraChannel;
+        return channel ? `#${channel}` : 'Chat';
     });
 
     const isConnected = createMemo(() => {
@@ -302,532 +177,21 @@ export default function Chat() {
         });
     };
 
-    /**
-     * Find emote in all providers
-     */
-    const findEmote = (code: string, platform: 'twitch' | 'kick' | 'youtube' = 'twitch'): Emote | null => {
-        if (platform === 'kick') {
-            const channelEmotes = channel7TVKick;
-            return channelEmotes.find(e => e.code === code) ||
-                global7TV.find(e => e.code === code) ||
-                null;
-        }
-
-        if (platform === 'youtube') {
-            return channel7TVYouTube.find(e => e.code === code) ||
-                global7TV.find(e => e.code === code) ||
-                null;
-        }
-
-        const channelEmotes = channel7TV;
-        // Priority: Channel > Global, 7TV > BTTV > FFZ
-        return channelEmotes.find(e => e.code === code) ||
-            channelBTTV.find(e => e.code === code) ||
-            channelFFZ.find(e => e.code === code) ||
-            global7TV.find(e => e.code === code) ||
-            globalBTTV.find(e => e.code === code) ||
-            globalFFZ.find(e => e.code === code) ||
-            null;
-    };
-
-    /**
-     * Parse message content into parts (text, emotes, cheers)
-     */
     const parseMessageContent = (
         text: string,
         twitchEmotes: { [id: string]: string[] } | undefined,
-        bits?: number,
+        _bits?: number,
         platform: 'twitch' | 'kick' | 'youtube' = 'twitch'
-    ): ParsedPart[] => {
-        // First, handle Twitch native emotes
-        let parts: { start: number; end: number; type: 'emote'; content: ParsedPart }[] = [];
+    ): ParsedPart[] => parseTwitchMessageContentBase(text, twitchEmotes, config().showEmotes, findEmote, platform);
 
-        if (twitchEmotes && config().showEmotes) {
-            Object.entries(twitchEmotes).forEach(([id, ranges]) => {
-                ranges.forEach(range => {
-                    const [start, end] = range.split("-").map(Number);
-                    const emoteName = text.substring(start, end + 1);
-                    parts.push({
-                        start,
-                        end: end + 1,
-                        type: "emote",
-                        content: {
-                            type: "emote",
-                            url: `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`,
-                            name: emoteName,
-                            provider: 'twitch'
-                        }
-                    });
-                });
-            });
-        }
+    const parseYouTubeMessageContent = (text: string, emojis?: any[], emojiMap?: Map<string, string> | null): ParsedPart[] =>
+        parseYouTubeMessageContentBase(text, emojis, emojiMap || null, config().showEmotes);
 
-        parts.sort((a, b) => a.start - b.start);
+    const parseKickMessageContent = (text: string, emotes?: any[]): ParsedPart[] =>
+        parseKickMessageContentBase(text, emotes, config().showEmotes, findEmote);
 
-        const finalParts: ParsedPart[] = [];
-        let cursor = 0;
-
-        const processTextChunk = (chunk: string) => {
-            if (!chunk) return;
-
-            const words = chunk.split(/(\s+)/);
-
-            for (let i = 0; i < words.length; i++) {
-                const word = words[i];
-                const trimmed = word.trim();
-
-                if (!trimmed) {
-                    finalParts.push(word);
-                    continue;
-                }
-
-                // Check for third-party emotes
-                if (config().showEmotes) {
-                    const emote = findEmote(trimmed, platform);
-                    if (emote) {
-                        const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
-                        finalParts.push({
-                            type: "emote",
-                            url: emote.url,
-                            name: emote.code,
-                            provider: emote.provider,
-                            isZeroWidth
-                        });
-                        continue;
-                    }
-                }
-
-                // Regular text
-                finalParts.push(word);
-            }
-        };
-
-        parts.forEach(part => {
-            if (part.start > cursor) {
-                processTextChunk(text.substring(cursor, part.start));
-            }
-            finalParts.push(part.content);
-            cursor = part.end;
-        });
-
-        if (cursor < text.length) {
-            processTextChunk(text.substring(cursor));
-        }
-
-        return finalParts.filter(p => p !== "");
-    };
-
-    const emojiToTwemojiUrl = (emoji: string) => {
-        const codepoints = Array.from(emoji)
-            .map(char => char.codePointAt(0)?.toString(16))
-            .filter(Boolean)
-            .join("-");
-        return `https://twemoji.maxcdn.com/v/latest/svg/${codepoints}.svg`;
-    };
-
-    const parseYouTubeMessageContent = (text: string, emojis?: any[], emojiMap?: Map<string, string> | null): ParsedPart[] => {
-        if (!config().showEmotes) return [text];
-
-        let parts: ParsedPart[] = [text];
-
-        const shortcodeMap = new Map<string, string>();
-        if (Array.isArray(emojis)) {
-            emojis.forEach((emoji: any) => {
-                const imageUrl = emoji?.imageUrl || emoji?.url || emoji?.image?.thumbnails?.[0]?.url;
-                const shortcuts = [
-                    emoji?.shortcode,
-                    ...(Array.isArray(emoji?.shortcuts) ? emoji.shortcuts : []),
-                    ...(Array.isArray(emoji?.shortcodes) ? emoji.shortcodes : []),
-                ].filter(Boolean);
-                const emojiId = emoji?.emojiId;
-
-                if (imageUrl) {
-                    shortcuts.forEach((shortcut: string) => {
-                        shortcodeMap.set(shortcut, imageUrl);
-                        const trimmed = shortcut.replace(/^:+|:+$/g, "");
-                        if (trimmed && trimmed !== shortcut) {
-                            shortcodeMap.set(trimmed, imageUrl);
-                        }
-                        if (trimmed) {
-                            shortcodeMap.set(`:${trimmed}:`, imageUrl);
-                        }
-                    });
-                    if (emojiId && /[^\x00-\x7F]/.test(emojiId)) {
-                        shortcodeMap.set(emojiId, imageUrl);
-                    }
-                }
-            });
-        }
-
-        if (shortcodeMap.size > 0) {
-            const escaped = Array.from(shortcodeMap.keys()).map((value) =>
-                value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-            );
-            const regex = new RegExp(`(${escaped.join("|")})`, "g");
-            const nextParts: ParsedPart[] = [];
-            parts.forEach((part) => {
-                if (typeof part !== "string") {
-                    nextParts.push(part);
-                    return;
-                }
-                const split = part.split(regex);
-                split.forEach((chunk) => {
-                    const imageUrl = shortcodeMap.get(chunk);
-                    if (imageUrl) {
-                        nextParts.push({
-                            type: "emote",
-                            url: imageUrl,
-                            name: chunk,
-                            provider: "youtube"
-                        });
-                    } else if (chunk) {
-                        nextParts.push(chunk);
-                    }
-                });
-            });
-            parts = nextParts;
-        }
-
-        if (emojiMap && emojiMap.size > 0) {
-            const nextParts: ParsedPart[] = [];
-            const shortcodePattern = /:([a-zA-Z0-9_+-]+):/g;
-            parts.forEach((part) => {
-                if (typeof part !== "string") {
-                    nextParts.push(part);
-                    return;
-                }
-                let lastIndex = 0;
-                for (const match of part.matchAll(shortcodePattern)) {
-                    const index = match.index ?? 0;
-                    const shortcode = match[0];
-                    if (index > lastIndex) {
-                        nextParts.push(part.slice(lastIndex, index));
-                    }
-                    const url = emojiMap.get(shortcode);
-                    if (url) {
-                        nextParts.push({
-                            type: "emote",
-                            url,
-                            name: shortcode,
-                            provider: "youtube"
-                        });
-                    } else {
-                        nextParts.push(shortcode);
-                    }
-                    lastIndex = index + shortcode.length;
-                }
-                if (lastIndex < part.length) {
-                    nextParts.push(part.slice(lastIndex));
-                }
-            });
-            parts = nextParts;
-        }
-
-        const emojiRegex = /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*?/gu;
-        const withTwemoji: ParsedPart[] = [];
-        parts.forEach((part) => {
-            if (typeof part !== "string") {
-                withTwemoji.push(part);
-                return;
-            }
-            let lastIndex = 0;
-            for (const match of part.matchAll(emojiRegex)) {
-                const index = match.index ?? 0;
-                const emoji = match[0];
-                if (index > lastIndex) {
-                    withTwemoji.push(part.slice(lastIndex, index));
-                }
-                withTwemoji.push({
-                    type: "emote",
-                    url: emojiToTwemojiUrl(emoji),
-                    name: emoji,
-                    provider: "twemoji"
-                });
-                lastIndex = index + emoji.length;
-            }
-            if (lastIndex < part.length) {
-                withTwemoji.push(part.slice(lastIndex));
-            }
-        });
-
-        return withTwemoji.filter((part) => part !== "");
-    };
-
-    const extractEmojiMap = (data: any): Map<string, string> => {
-        const map = new Map<string, string>();
-        const items = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.items)
-                ? data.items
-                : Array.isArray(data?.emojis)
-                    ? data.emojis
-                    : Array.isArray(data?.emoji)
-                        ? data.emoji
-                        : [];
-        items.forEach((item: any) => {
-            const imageUrl =
-                item?.image?.thumbnails?.[0]?.url ||
-                item?.image?.url ||
-                item?.imageUrl ||
-                item?.url ||
-                item?.png?.url ||
-                item?.svg?.url;
-            if (!imageUrl) return;
-            const shortcuts = [
-                ...(Array.isArray(item?.shortcuts) ? item.shortcuts : []),
-                ...(Array.isArray(item?.shortcodes) ? item.shortcodes : []),
-                item?.shortcode
-            ].filter(Boolean);
-            shortcuts.forEach((shortcut: string) => {
-                map.set(shortcut, imageUrl);
-                const trimmed = shortcut.replace(/^:+|:+$/g, "");
-                if (trimmed && trimmed !== shortcut) {
-                    map.set(trimmed, imageUrl);
-                }
-                if (trimmed) {
-                    map.set(`:${trimmed}:`, imageUrl);
-                }
-            });
-        });
-        return map;
-    };
-
-    const loadYouTubeEmojiMap = async (): Promise<Map<string, string>> => {
-        if (youtubeEmojiMap) return youtubeEmojiMap;
-        if (youtubeEmojiMapPromise) return youtubeEmojiMapPromise;
-        youtubeEmojiMapPromise = (async () => {
-            try {
-                const res = await fetch("https://www.gstatic.com/youtube/img/emojis/emojis-png-7.json");
-                if (!res.ok) return new Map();
-                const data = await res.json();
-                const map = extractEmojiMap(data);
-                youtubeEmojiMap = map;
-                return map;
-            } catch {
-                return new Map();
-            }
-        })();
-        return youtubeEmojiMapPromise;
-    };
-
-    const getKickEmoteUrl = (emote: any): string | undefined => {
-        const directUrl = emote?.url || emote?.image_url || emote?.image;
-        if (typeof directUrl === "string" && directUrl.length) return directUrl;
-
-        const images = emote?.images || emote?.image;
-        if (images) {
-            const candidates = [
-                images.fullsize,
-                images.full,
-                images.original,
-                images.large,
-                images.medium,
-                images.small,
-                images?.url,
-            ];
-            for (const candidate of candidates) {
-                if (typeof candidate === "string" && candidate.length) return candidate;
-            }
-        }
-
-        if (emote?.id) {
-            return `https://files.kick.com/emotes/${emote.id}/fullsize`;
-        }
-
-        return undefined;
-    };
-
-    const parseKickMessageContent = (text: string, emotes?: any[]): ParsedPart[] => {
-        if (Array.isArray(emotes) && emotes.length > 0) {
-            const positioned = emotes
-                .map((emote) => {
-                    const start = emote?.start ?? emote?.start_index ?? emote?.startIndex ?? emote?.positions?.[0];
-                    const end = emote?.end ?? emote?.end_index ?? emote?.endIndex ?? emote?.positions?.[1];
-                    if (typeof start !== "number" || typeof end !== "number") return null;
-                    const url = getKickEmoteUrl(emote);
-                    if (!url) return null;
-                    return {
-                        start,
-                        end,
-                        url,
-                        name: String(emote?.name || emote?.code || emote?.id || "emote")
-                    };
-                })
-                .filter(Boolean) as Array<{ start: number; end: number; url: string; name: string }>;
-
-            if (positioned.length > 0) {
-                positioned.sort((a, b) => a.start - b.start);
-                const parts: ParsedPart[] = [];
-                let cursor = 0;
-                for (const emote of positioned) {
-                    if (emote.start > cursor) {
-                        parts.push(text.slice(cursor, emote.start));
-                    }
-                    parts.push({
-                        type: "emote",
-                        url: emote.url,
-                        name: emote.name,
-                        provider: "kick"
-                    });
-                    cursor = emote.end + 1;
-                }
-                if (cursor < text.length) {
-                    parts.push(text.slice(cursor));
-                }
-                return parts.filter(p => p !== "");
-            }
-        }
-
-        const parts: ParsedPart[] = [];
-        const emoteRegex = /\[emote:(\d+):([^\]]+)\]/g;
-        let lastIndex = 0;
-        let match: RegExpExecArray | null = null;
-
-        while ((match = emoteRegex.exec(text)) !== null) {
-            const [full, id, name] = match;
-            if (match.index > lastIndex) {
-                parts.push(text.slice(lastIndex, match.index));
-            }
-            parts.push({
-                type: "emote",
-                url: `https://files.kick.com/emotes/${id}/fullsize`,
-                name,
-                provider: "kick"
-            });
-            lastIndex = match.index + full.length;
-        }
-
-        if (lastIndex < text.length) {
-            parts.push(text.slice(lastIndex));
-        }
-
-        const finalParts: ParsedPart[] = [];
-        const processTextChunk = (chunk: string) => {
-            if (!chunk) return;
-            const words = chunk.split(/(\s+)/);
-            for (const word of words) {
-                const trimmed = word.trim();
-                if (!trimmed) {
-                    finalParts.push(word);
-                    continue;
-                }
-                if (config().showEmotes) {
-                    const emote = findEmote(trimmed, 'kick');
-                    if (emote) {
-                        const isZeroWidth = ZERO_WIDTH_EMOTES.has(trimmed);
-                        finalParts.push({
-                            type: "emote",
-                            url: emote.url,
-                            name: emote.code,
-                            provider: emote.provider,
-                            isZeroWidth
-                        });
-                        continue;
-                    }
-                }
-                finalParts.push(word);
-            }
-        };
-
-        for (const part of parts) {
-            if (typeof part === 'string') {
-                processTextChunk(part);
-            } else {
-                finalParts.push(part);
-            }
-        }
-
-        return finalParts.filter(p => p !== "");
-    };
-
-    const getVeloraEmoteUrl = (emote: any): string | undefined => {
-        const directUrl = emote?.url || emote?.imageUrl || emote?.image_url || emote?.image || emote?.src;
-        if (typeof directUrl === "string" && directUrl.length) return directUrl;
-
-        const images = emote?.images;
-        if (images) {
-            const candidates = [
-                images.fullsize,
-                images.full,
-                images.original,
-                images.large,
-                images.medium,
-                images.small,
-                images?.url,
-            ];
-            for (const candidate of candidates) {
-                if (typeof candidate === "string" && candidate.length) return candidate;
-            }
-        }
-
-        return undefined;
-    };
-
-    const parseVeloraMessageContent = (text: string, emotes?: any[]): ParsedPart[] => {
-        if (Array.isArray(emotes) && emotes.length > 0) {
-            const positioned = emotes
-                .map((emote) => {
-                    const start = emote?.start ?? emote?.start_index ?? emote?.startIndex ?? emote?.positions?.[0];
-                    const end = emote?.end ?? emote?.end_index ?? emote?.endIndex ?? emote?.positions?.[1];
-                    if (typeof start !== "number" || typeof end !== "number") return null;
-                    const url = getVeloraEmoteUrl(emote);
-                    if (!url) return null;
-                    return {
-                        start,
-                        end,
-                        url,
-                        name: String(emote?.code || emote?.name || emote?.id || "emote")
-                    };
-                })
-                .filter(Boolean) as Array<{ start: number; end: number; url: string; name: string }>;
-
-            if (positioned.length > 0) {
-                positioned.sort((a, b) => a.start - b.start);
-                const parts: ParsedPart[] = [];
-                let cursor = 0;
-                for (const emote of positioned) {
-                    if (emote.start > cursor) {
-                        parts.push(text.slice(cursor, emote.start));
-                    }
-                    parts.push({
-                        type: "emote",
-                        url: emote.url,
-                        name: emote.name,
-                        provider: "velora"
-                    });
-                    cursor = emote.end + 1;
-                }
-                if (cursor < text.length) {
-                    parts.push(text.slice(cursor));
-                }
-                return parts.filter(p => p !== "");
-            }
-        }
-
-        const parts: ParsedPart[] = [];
-        const words = text.split(/(\s+)/);
-        for (const word of words) {
-            const trimmed = word.trim();
-            if (!trimmed) {
-                parts.push(word);
-                continue;
-            }
-            if (config().showEmotes && veloraEmoteMap.size > 0) {
-                const url = veloraEmoteMap.get(trimmed);
-                if (url) {
-                    parts.push({
-                        type: "emote",
-                        url,
-                        name: trimmed,
-                        provider: "velora"
-                    });
-                    continue;
-                }
-            }
-            parts.push(word);
-        }
-        return parts.filter(p => p !== "");
-    };
+    const parseVeloraMessageContent = (text: string, emotes?: any[]): ParsedPart[] =>
+        parseVeloraMessageContentBase(text, emotes, config().showEmotes, veloraEmoteMap);
 
     /**
      * Get badges for a user
@@ -1017,34 +381,25 @@ export default function Chat() {
         }
 
         // Fetch third-party badges
+        if (config().showBadges) {
             Promise.all([
                 fetch7TVUserBadges(userId, 'twitch'),
                 fetchFFZUserBadges(userId)
             ]).then(([sevenTVBadges, ffzBadges]) => {
-            if (!keepAlive) return;
-            const extraBadges = [...sevenTVBadges, ...ffzBadges];
-            if (extraBadges.length === 0) return;
+                if (!keepAlive) return;
+                const extraBadges = dedupeBadges([...sevenTVBadges, ...ffzBadges]);
+                if (extraBadges.length === 0) return;
 
-            setMessages(prev => prev.map(m =>
-                m.id === messageId
-                    ? { ...m, badges: [...m.badges, ...extraBadges] }
-                    : m
-            ));
-        });
+                setMessages(prev => prev.map(m =>
+                    m.id === messageId
+                        ? { ...m, badges: dedupeBadges([...m.badges, ...extraBadges]) }
+                        : m
+                ));
+            });
+        }
     };
 
     const KICK_PUSHER_URL = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0-rc2&flash=false";
-
-    const fetchKickChannelData = async (channel: string) => {
-        try {
-            const res = await fetch(`/api/kick?channel=${encodeURIComponent(channel)}`);
-            if (!res.ok) return null;
-            return await res.json();
-        } catch (e) {
-            console.error("Failed to fetch Kick channel info:", e);
-            return null;
-        }
-    };
 
     const applyKickBadgesFromChannel = (channelData: any) => {
         const subs = Array.isArray(channelData?.subscriber_badges) ? channelData.subscriber_badges : [];
@@ -1113,13 +468,6 @@ export default function Chat() {
         }
 
         return KICK_GLOBAL_BADGES[normalized];
-    };
-
-    const PLATFORM_LOGOS: Record<ChatPlatform, string> = {
-        twitch: "https://cdn.brandfetch.io/idIwZCwD2f/theme/dark/symbol.svg?c=1bxid64Mup7aczewSAYMX&t=1668070397594",
-        kick: "data:image/svg+xml;utf8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20fill-rule%3D%22evenodd%22%20clip-rule%3D%22evenodd%22%20stroke-linejoin%3D%22round%22%20stroke-miterlimit%3D%222%22%3E%3Cpath%20d%3D%22M37%20.036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z%22%20fill%3D%22%2353fc18%22/%3E%3C/svg%3E",
-        youtube: "https://www.vectorlogo.zone/logos/youtube/youtube-icon.svg",
-        velora: "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%202000%202000%22%3E%3Cpath%20d%3D%22M264.28%2C597.95c-18.12-39.02-34.8-77.61-54.45-114.63-29.74-56.02-61.32-111.06-92.59-166.25-10.83-19.11-22.33-37.93-34.82-55.99-23.55-34.02-48.33-67.19-71.96-101.16-7.42-10.66-16.31-22.19-18.26-34.33-3.25-20.22%2C4.81-29.42%2C25.25-29.52%2C51.65-.24%2C103.3%2C1.34%2C154.95%2C2.55%2C15.96.37%2C31.93%2C1.4%2C47.81%2C3.01%2C25.34%2C2.56%2C51.04%2C3.88%2C75.8%2C9.31%2C35.72%2C7.84%2C71.32%2C17.18%2C105.9%2C29.01%2C40.58%2C13.89%2C75.9%2C38.09%2C108.62%2C65.55%2C41.11%2C34.49%2C72.57%2C77.12%2C102.02%2C121.67%2C13.47%2C20.37%2C24.09%2C42.11%2C35.71%2C63.33%2C12.54%2C22.91%2C22.64%2C47.16%2C33.67%2C70.89%2C10.28%2C22.11%2C20.72%2C44.14%2C30.44%2C66.49%2C6.82%2C15.67%2C10.85%2C32.77%2C19.18%2C47.51%2C13.35%2C23.66%2C19.26%2C49.95%2C29.83%2C74.54%2C16.16%2C37.62%2C30.93%2C75.83%2C46.73%2C113.6%2C18.74%2C44.8%2C37.33%2C89.68%2C57.17%2C133.99%2C15.03%2C33.57%2C29.83%2C67.54%2C48.56%2C99.06%2C18.51%2C31.14%2C40.54%2C60.49%2C63.62%2C88.48%2C10.51%2C12.75%2C25.94%2C24.24%2C45.42%2C20.09%2C7.65-1.63%2C19.07-4.62%2C21.08-9.91%2C4.8-12.62%2C17.22-18.44%2C22.09-30.64%2C5.43-13.61%2C13.99-25.93%2C20.28-39.25%2C18.3-38.7%2C37.56-77.03%2C53.85-116.57%2C28.17-68.36%2C53.41-137.93%2C81.68-206.26%2C31.83-76.96%2C65.51-153.16%2C98.69-229.56%2C8.77-20.18%2C18.14-40.15%2C28.15-59.74%2C26.45-51.79%2C58.01-100.23%2C94.93-145.3%2C38.88-47.47%2C85.08-86.41%2C139.15-114.56%2C41.45-21.58%2C86.31-34.37%2C132.66-43.77%2C89.9-18.22%2C180.39-8.02%2C270.58-10.43%2C7.83-.21%2C21.19%2C6.27%2C22.62%2C11.98%2C2.36%2C9.44-.36%2C22.25-5.42%2C31.08-20.65%2C36.03-43.25%2C70.94-64.66%2C106.55-18.35%2C30.53-36.59%2C61.15-53.89%2C92.27-19.6%2C35.26-38.3%2C71.02-57.03%2C106.75-16.78%2C32.03-33.51%2C64.1-49.42%2C96.56-14.04%2C28.67-26.74%2C58-40.34%2C86.9-15.17%2C32.24-30.88%2C64.23-45.99%2C96.5-11.35%2C24.23-21.94%2C48.82-33.2%2C73.09-18.4%2C39.66-37.05%2C79.2-55.63%2C118.78-15.61%2C33.27-31.26%2C66.53-46.9%2C99.8-9.9%2C21.05-19.48%2C42.24-29.78%2C63.09-15.26%2C30.91-30.59%2C61.8-46.68%2C92.27-26.11%2C49.43-50.76%2C99.8-79.89%2C147.41-32.9%2C53.76-67.31%2C107.07-106.15%2C156.59-38.52%2C49.12-81.06%2C95.5-134.17%2C130.57-38.74%2C25.59-79.74%2C46.92-125.66%2C52.65-44.09%2C5.5-88.76%2C3.05-129.2-20.43-21.75-12.63-45.67-22.47-65.06-38.01-25.37-20.33-48.37-43.99-70.28-68.14-25.2-27.77-48.53-57.28-71.81-86.73-12.14-15.36-21.09-33.34-33.85-48.1-20.72-23.97-29.18-55.48-51.01-78.8-7.02-7.5-7.73-20.61-14.1-29.07-19.89-26.46-32.57-56.87-48.09-85.61-30.58-56.62-59.23-114.3-87.65-172.06-20.44-41.54-39.12-83.95-58.74-125.9-7.22-15.43-13.82-31.29-22.56-45.84-10.62-17.69-14.24-37.98-23.51-56.16-10.61-20.83-19.19-42.69-29.09-63.9-8.6-18.42-18.31-36.34-26.61-54.89-8.33-18.61-15.38-37.78-23.27-56.6-4.62-11.02-9.76-21.81-14.77-33.84Z%22%20fill%3D%22%23e2af00%22/%3E%3C/svg%3E",
     };
 
     const handleKickMessage = (payload: any) => {
@@ -1302,156 +650,20 @@ export default function Chat() {
         }
     };
 
-    /**
-     * Generate consistent color for username
-     */
-    const getPlatformLabel = (platform: ChatPlatform) => {
-        if (platform === 'kick') return 'Kick';
-        if (platform === 'youtube') return 'YouTube';
-        if (platform === 'velora') return 'Velora';
-        return 'Twitch';
-    };
-
-    const getMessagePlatform = (msg: ChatMessage): ChatPlatform => {
-        if (msg.platform) return msg.platform as ChatPlatform;
-        if (config().platforms.length === 1) return config().platforms[0];
-        return 'twitch';
-    };
-
-    /**
-     * Generate consistent color for username
-     */
-    const generateColor = (username: string): string => {
-        let hash = 0;
-        for (let i = 0; i < username.length; i++) {
-            hash = username.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `hsl(${hue}, 70%, 60%)`;
-    };
-
-    /**
-     * Format timestamp
-     */
-    const formatTime = (timestamp: number): string => {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-    };
-
-    let audioContext: AudioContext | null = null;
-    let lastSoundAt = 0;
-
-    const playMessageSound = () => {
-        if (!config().playSound) return;
-        const now = Date.now();
-        if (now - lastSoundAt < 150) return;
-        lastSoundAt = now;
-
-        try {
-            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-            if (!Ctx) return;
-            if (!audioContext) audioContext = new Ctx();
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            const gain = audioContext.createGain();
-            const now = audioContext.currentTime;
-            const base = audioContext.createOscillator();
-            const overtone = audioContext.createOscillator();
-
-            base.type = 'sine';
-            overtone.type = 'sine';
-            base.frequency.setValueAtTime(880, now);
-            overtone.frequency.setValueAtTime(1320, now);
-
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-
-            base.connect(gain);
-            overtone.connect(gain);
-            gain.connect(audioContext.destination);
-
-            base.start(now);
-            overtone.start(now);
-            base.stop(now + 0.3);
-            overtone.stop(now + 0.3);
-        } catch {
-            // Ignore autoplay or audio context errors
-        }
-    };
-
-    const maybePlayMessageSound = (timestamp: number) => {
-        if (!config().playSound) return;
-        if (Date.now() - timestamp > 5000) return;
-        playMessageSound();
-    };
+    const { maybePlayMessageSound } = createSoundPlayer(() => config().playSound);
 
     const clearChatMessages = () => {
         setMessages([]);
     };
 
-    const isClearChatNotice = (content: string) => {
-        const lowered = content.toLowerCase();
-        return lowered.includes('cleared the chat');
-    };
+    const getMessageClassName = (msg: ChatMessage) => getMessageClass(msg);
 
-    /**
-     * Get message container class based on type
-     */
-    const getMessageClass = (msg: ChatMessage): string => {
-        const classes = ['chat-message'];
-
-        if (msg.type === 'action') classes.push('chat-message--action');
-        if (msg.platform === 'velora' && msg.veloraCard?.type) {
-            classes.push('chat-message--velora-card');
-        }
-
-        return classes.join(' ');
-    };
-
-    const getMessageBubbleClass = (msg: ChatMessage): string => {
-        const classes = ['message-bubble'];
-
-        // Message type styling
-        if (msg.type === 'sub') classes.push('message-sub');
-        if (msg.type === 'resub') classes.push('message-resub');
-        if (msg.type === 'subgift') classes.push('message-subgift');
-        if (msg.type === 'submysterygift') classes.push('message-submysterygift');
-        if (msg.type === 'raid') classes.push('message-raid');
-        if (msg.type === 'announcement') classes.push('chat-message--announcement');
-        if (msg.type === 'system' && (msg.platform !== 'velora' || (config().showHighlights && !msg.veloraCard?.type))) {
-            classes.push('message-modaction');
-        }
-        if (msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration') {
-            classes.push('message-velora-giftcard');
-        }
-        if (msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration') {
-            classes.push('message-velora-subcard');
-        }
-        if (msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration') {
-            classes.push('message-velora-pointscard');
-        }
-        if (msg.platform === 'velora' && msg.veloraCard?.type === 'volts-celebration') {
-            classes.push('message-velora-voltscard');
-        }
-        if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
-        if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
-
-        if (msg.platform === 'velora' && msg.effect && config().showHighlights) {
-            classes.push('velora-effect');
-            classes.push(`velora-effect--${msg.effect}`);
-        }
-
-        // Check if message was deleted
-        if (deletedMessages().has(msg.id)) classes.push('message-deleted');
-
-        return classes.join(' ');
-    };
+    const getMessageBubbleClassName = (msg: ChatMessage) =>
+        getMessageBubbleClass(msg, {
+            showHighlights: config().showHighlights,
+            showFirstMessage: config().showFirstMessage,
+            deletedMessages: deletedMessages(),
+        });
 
     const connectKick = async (channel: string) => {
         console.log(`🟢 Kroma - Connecting to Kick #${channel}`);
@@ -1477,8 +689,8 @@ export default function Chat() {
             preload7TVBadges()
         ]);
 
-        global7TV = g7tv;
-        channel7TVKick = c7tv;
+        emoteSources.global7TV = g7tv;
+        emoteSources.channel7TVKick = c7tv;
 
         const connect = () => {
             if (!keepAlive) return;
@@ -1537,17 +749,6 @@ export default function Chat() {
         };
 
         connect();
-    };
-
-    const getYouTubeLiveChat = async (channel: string) => {
-        try {
-            const res = await fetch(`/api/youtube?channel=${encodeURIComponent(channel)}`);
-            if (!res.ok) return null;
-            return await res.json();
-        } catch (e) {
-            console.error("Failed to fetch YouTube chat info:", e);
-            return null;
-        }
     };
 
     const getYouTubeAuthorColor = (author: any) => {
@@ -1637,6 +838,7 @@ export default function Chat() {
         if (config().showEmotes && rawText.includes(':') && emojiList.length === 0) {
             loadYouTubeEmojiMap().then((map) => {
                 if (!keepAlive || map.size === 0) return;
+                youtubeEmojiMap = map;
                 setMessages(prev => prev.map(m =>
                     m.id === item.id
                         ? { ...m, parsedContent: parseYouTubeMessageContent(rawText, emojiList, map) }
@@ -1658,17 +860,13 @@ export default function Chat() {
 
     const pollYouTubeChat = async () => {
         if (!youtubeLiveChatId || !keepAlive) return;
-        const params = new URLSearchParams();
-        params.set('liveChatId', youtubeLiveChatId);
-        if (youtubeNextPageToken) params.set('pageToken', youtubeNextPageToken);
 
         try {
-            const res = await fetch(`/api/youtube/messages?${params.toString()}`);
-            if (!res.ok) {
+            const data = await fetchYouTubeMessages(youtubeLiveChatId, youtubeNextPageToken);
+            if (!data) {
                 setYoutubeConnected(false);
                 return;
             }
-            const data = await res.json();
             youtubeNextPageToken = data.nextPageToken || youtubeNextPageToken;
             const items = Array.isArray(data.items) ? data.items : [];
             items.forEach(addYouTubeMessage);
@@ -1684,7 +882,7 @@ export default function Chat() {
 
     const connectYouTube = async (channel: string) => {
         console.log(`🔴 Kroma - Connecting to YouTube #${channel}`);
-        const info = await getYouTubeLiveChat(channel);
+        const info = await fetchYouTubeLiveChat(channel);
         if (!info?.liveChatId) {
             console.error("Failed to resolve YouTube liveChatId.");
             return;
@@ -1692,24 +890,13 @@ export default function Chat() {
         youtubeLiveChatId = info.liveChatId;
         youtubeNextPageToken = null;
         youtubeSeenMessageIds.clear();
-        if (global7TV.length === 0) {
-            global7TV = await fetch7TVGlobalEmotes();
+        if (emoteSources.global7TV.length === 0) {
+            emoteSources.global7TV = await fetch7TVGlobalEmotes();
         }
         if (info.channelId) {
-            channel7TVYouTube = await fetch7TVChannelEmotes(info.channelId, 'youtube');
+            emoteSources.channel7TVYouTube = await fetch7TVChannelEmotes(info.channelId, 'youtube');
         }
         pollYouTubeChat();
-    };
-
-    const resolveVeloraUser = async (username: string) => {
-        try {
-            const res = await fetch(`/api/velora/resolve?username=${encodeURIComponent(username)}`);
-            if (!res.ok) return null;
-            return await res.json();
-        } catch (e) {
-            console.error("Failed to resolve Velora user:", e);
-            return null;
-        }
     };
 
     const makeVeloraBadgeSvg = (label: string, bg: string, fg = "#ffffff") => {
@@ -1767,9 +954,8 @@ export default function Chat() {
 
     const loadVeloraBadgeCatalog = async () => {
         try {
-            const res = await fetch(`/api/velora/badges/catalog`);
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = await fetchVeloraBadgesCatalog();
+            if (!data) return;
             const list = extractVeloraBadgeList(data);
             list.forEach((badge: any) => {
                 const key = String(badge?.key || badge?.slug || badge?.id || badge?.name || badge?.code || "").toLowerCase();
@@ -1786,9 +972,8 @@ export default function Chat() {
 
     const loadVeloraChannelBadges = async (username: string) => {
         try {
-            const res = await fetch(`/api/velora/badges/channel?username=${encodeURIComponent(username)}`);
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = await fetchVeloraBadgesForChannel(username);
+            if (!data) return;
             const list = extractVeloraBadgeList(data);
             list.forEach((badge: any) => {
                 const key = String(badge?.key || badge?.slug || badge?.id || badge?.name || badge?.code || "").toLowerCase();
@@ -1806,9 +991,8 @@ export default function Chat() {
 
     const loadVeloraEmotes = async (channelId: string) => {
         try {
-            const res = await fetch(`/api/velora/emotes?channelId=${encodeURIComponent(channelId)}`);
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = await fetchVeloraEmotes(channelId);
+            if (!data) return;
             const map = new Map<string, string>();
             const globalEmotes = Array.isArray(data?.global) ? data.global : [];
             const channelEmotes = Array.isArray(data?.channel) ? data.channel : [];
@@ -1840,9 +1024,8 @@ export default function Chat() {
         pending.forEach(code => veloraResolveInFlight.add(code));
 
         try {
-            const res = await fetch(`/api/velora/emotes/resolve?codes=${encodeURIComponent(pending.join(','))}`);
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = await resolveVeloraEmotesClient(pending);
+            if (!data) return;
             if (data && typeof data === "object" && !Array.isArray(data)) {
                 Object.entries(data).forEach(([key, value]) => {
                     if (typeof value === "string") {
@@ -2110,14 +1293,14 @@ export default function Chat() {
 
         try {
             const responses: any[] = [];
-            const res = await fetch(`/api/velora/history?channelId=${encodeURIComponent(veloraChannelId)}`);
-            if (res.ok) {
-                responses.push(await res.json());
+            const channelHistory = await fetchVeloraHistory(veloraChannelId);
+            if (channelHistory) {
+                responses.push(channelHistory);
             }
             if (veloraStreamId && veloraStreamId !== veloraChannelId) {
-                const streamRes = await fetch(`/api/velora/history?channelId=${encodeURIComponent(veloraStreamId)}`);
-                if (streamRes.ok) {
-                    responses.push(await streamRes.json());
+                const streamHistory = await fetchVeloraHistory(veloraStreamId);
+                if (streamHistory) {
+                    responses.push(streamHistory);
                 }
             }
             if (responses.length === 0) {
@@ -2197,14 +1380,11 @@ export default function Chat() {
 
             // Fetch channel ID
             try {
-                const res = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${twitchChannelName}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const id = data[0]?.id;
-                    if (id) {
-                        setChannelId(id);
-                        console.log(`📺 Channel ID: ${id}`);
-                    }
+                const data = await fetchTwitchUserByLogin(twitchChannelName);
+                const id = Array.isArray(data) ? data[0]?.id : null;
+                if (id) {
+                    setChannelId(id);
+                    console.log(`📺 Channel ID: ${id}`);
                 }
             } catch (e) {
                 console.error('Failed to get channel ID:', e);
@@ -2235,14 +1415,14 @@ export default function Chat() {
                 fetchFFZChannelEmotes(twitchChannelName)
             ]);
 
-            global7TV = g7tv;
-            channel7TV = c7tv;
-            globalBTTV = gBttv;
-            channelBTTV = cBttv;
-            globalFFZ = gFfz;
-            channelFFZ = cFfz;
+            emoteSources.global7TV = g7tv;
+            emoteSources.channel7TV = c7tv;
+            emoteSources.globalBTTV = gBttv;
+            emoteSources.channelBTTV = cBttv;
+            emoteSources.globalFFZ = gFfz;
+            emoteSources.channelFFZ = cFfz;
 
-            console.log(`✨ Loaded emotes - 7TV: ${global7TV.length + channel7TV.length}, BTTV: ${globalBTTV.length + channelBTTV.length}, FFZ: ${globalFFZ.length + channelFFZ.length}`);
+            console.log(`✨ Loaded emotes - 7TV: ${emoteSources.global7TV.length + emoteSources.channel7TV.length}, BTTV: ${emoteSources.globalBTTV.length + emoteSources.channelBTTV.length}, FFZ: ${emoteSources.globalFFZ.length + emoteSources.channelFFZ.length}`);
 
 
             if (twitchChannelName) {
@@ -2531,38 +1711,13 @@ export default function Chat() {
 
     return (
         <>
-            <MySiteTitle>#{params.channel}</MySiteTitle>
+            <MySiteTitle>{title()}</MySiteTitle>
 
             {/* Room State Indicators */}
-            <Show when={config().platforms.includes('twitch') && config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}>
-                <div class="room-state-bar">
-                    <Show when={roomState().slowMode > 0}>
-                        <span class="room-state-badge room-state-badge--slow">
-                            🐢 Slow Mode: {roomState().slowMode}s
-                        </span>
-                    </Show>
-                    <Show when={roomState().emoteOnly}>
-                        <span class="room-state-badge room-state-badge--emote">
-                            😀 Emote Only
-                        </span>
-                    </Show>
-                    <Show when={roomState().followersOnly >= 0}>
-                        <span class="room-state-badge room-state-badge--followers">
-                            💜 Followers{roomState().followersOnly > 0 ? ` (${roomState().followersOnly}m)` : ''}
-                        </span>
-                    </Show>
-                    <Show when={roomState().subsOnly}>
-                        <span class="room-state-badge room-state-badge--subs">
-                            ⭐ Sub Only
-                        </span>
-                    </Show>
-                    <Show when={roomState().r9k}>
-                        <span class="room-state-badge room-state-badge--r9k">
-                            🤖 R9K
-                        </span>
-                    </Show>
-                </div>
-            </Show>
+            <RoomStateBar
+                show={config().platforms.includes('twitch') && config().showRoomState && (roomState().slowMode > 0 || roomState().emoteOnly || roomState().followersOnly >= 0 || roomState().subsOnly || roomState().r9k)}
+                roomState={roomState()}
+            />
 
             {/* Chat Container */}
             <div
@@ -2584,326 +1739,14 @@ export default function Chat() {
                 >
                     <For each={[...messages()].reverse()}>
                         {(msg, index) => (
-                            <li
-                                class={getMessageClass(msg)}
-                                data-fading={config().fadeOutMessages ? "true" : "false"}
-                                style={{
-                                    "animation-delay": `${index() * 20}ms, var(--fade-delay)`
-                                }}
-                            >
-                                {/* Reply Context */}
-                                <Show when={msg.reply && config().showReplies}>
-                                    <div class="reply-context">
-                                        <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                        </svg>
-                                        <span class="reply-context__username">@{msg.reply!.parentDisplayName}</span>
-                                        <span class="reply-context__body">{msg.reply!.parentMsgBody}</span>
-                                    </div>
-                                </Show>
-
-                                {/* First Message Indicator */}
-                                <Show when={msg.isFirstMessage && config().showFirstMessage}>
-                                    <div class="first-message-indicator mb-1 inline-block">
-                                        First Message
-                                    </div>
-                                </Show>
-
-                                <div
-                                    class={getMessageBubbleClass(msg)}
-                                    data-effect={msg.effectVariant || msg.effect}
-                                    style={{
-                                        ...(msg.isAction ? { color: msg.color } : {}),
-                                        ...(msg.effectColor ? { "--velora-effect-color": msg.effectColor } : {})
-                                    }}
-                                >
-                                    {(() => {
-                                        const isVeloraGift = msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration';
-                                        const isVeloraSub = msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration';
-                                        const isVeloraPoints = msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration';
-                                        const isVeloraVolts = msg.platform === 'velora' && msg.veloraCard?.type === 'volts-celebration';
-                                        return (
-                                            <Show
-                                                when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts}
-                                                fallback={
-                                            <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
-                                                {/* Timestamp */}
-                                                <Show when={config().showTimestamps}>
-                                                    <span class="timestamp self-center">
-                                                        {formatTime(msg.timestamp)}
-                                                    </span>
-                                                </Show>
-
-                                                {/* Shared Chat Badge */}
-                                                <Show when={msg.isShared && config().showSharedChat}>
-                                                    <div class="mr-2 flex items-center h-[20px] self-center">
-                                                        <Show when={msg.sourceLogo}>
-                                                            <img
-                                                                src={msg.sourceLogo}
-                                                                alt={msg.sourceChannelName || "Source"}
-                                                                class="w-5 h-5 rounded-full ring-1 ring-white/30"
-                                                                title={msg.sourceChannelName ? `From ${msg.sourceChannelName}` : "Shared Message"}
-                                                            />
-                                                        </Show>
-                                                    </div>
-                                                </Show>
-
-                                                {/* Badges */}
-                                                <Show when={(config().showBadges && msg.badges.length > 0) || config().showPlatformBadge}>
-                                                    <div class="flex gap-1 self-center shrink-0 select-none items-center">
-                                                        <Show when={config().showPlatformBadge}>
-                                                            {(() => {
-                                                                const platform = getMessagePlatform(msg);
-                                                                return (
-                                                                    <img
-                                                                        src={PLATFORM_LOGOS[platform]}
-                                                                        alt={getPlatformLabel(platform)}
-                                                                        class="platform-logo"
-                                                                        loading="lazy"
-                                                                    />
-                                                                );
-                                                            })()}
-                                                        </Show>
-                                                        <For each={msg.badges}>
-                                                            {(badge) => (
-                                                                <img
-                                                                    src={badge.url}
-                                                                    alt={badge.title}
-                                                                    title={badge.title}
-                                                                    class="badge"
-                                                                    loading="lazy"
-                                                                />
-                                                            )}
-                                                        </For>
-                                                    </div>
-                                                </Show>
-
-                                                {/* Username Group */}
-                                                <div class="flex items-baseline shrink-0">
-                                                    {/* Pronouns */}
-                                                    <Show when={msg.pronouns && config().showPronouns && msg.platform === 'twitch'}>
-                                                        <span
-                                                            class={`${config().pridePronouns ? 'pronouns-badge--pride' : 'pronouns-badge--colored'} mr-1.5`}
-                                                            style={!config().pridePronouns ? {
-                                                                background: msg.pronounColor || '#A855F7',
-                                                                "background-size": msg.pronounIsGradient ? '200% 200%' : undefined,
-                                                                animation: msg.pronounIsGradient ? 'pride-shimmer 3s ease infinite' : undefined
-                                                            } : undefined}
-                                                        >
-                                                            {msg.pronouns}
-                                                        </span>
-                                                    </Show>
-
-                                                    <span
-                                                        class={`username ${msg.paint ? 'username--painted' : ''}`}
-                                                        style={{
-                                                            color: msg.paint ? undefined : msg.color,
-                                                            ...(msg.paint || {})
-                                                        }}
-                                                    >
-                                                        {msg.displayName}
-                                                    </span>
-
-                                                    <Show when={!msg.isAction}>
-                                                        <span class="separator">:</span>
-                                                    </Show>
-                                                </div>
-
-                                                {/* Bits/Cheer Badge */}
-                                                <Show when={msg.bits}>
-                                                    <span
-                                                        class="cheer-amount animate-pop-in"
-                                                        style={{ color: getCheerTierColor(msg.bits!) }}
-                                                    >
-                                                        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" />
-                                                        </svg>
-                                                        {msg.bits}
-                                                    </span>
-                                                </Show>
-
-                                                {/* Message Content */}
-                                                <span
-                                                    class="break-words message-content"
-                                                    style={msg.isAction ? { color: msg.color } : undefined}
-                                                >
-                                                    <For each={msg.parsedContent}>
-                                                        {(part) => (
-                                                            <>
-                                                                {typeof part === 'string' ? (
-                                                                    <span>{part}</span>
-                                                                ) : part.type === 'emote' ? (
-                                                                    <img
-                                                                        src={part.url}
-                                                                        alt={part.name}
-                                                                        title={part.name}
-                                                                        class={`emote ${part.isZeroWidth ? 'emote--zero-width' : ''}`}
-                                                                        loading="lazy"
-                                                                    />
-                                                                ) : part.type === 'cheer' ? (
-                                                                    <span class="inline-flex items-center gap-0.5 mx-0.5" style={{ color: part.color }}>
-                                                                        <img src={part.url} alt={part.prefix} class="h-5 w-5" loading="lazy" />
-                                                                        <span class="font-bold text-sm">{part.bits}</span>
-                                                                    </span>
-                                                                ) : null}
-                                                            </>
-                                                        )}
-                                                    </For>
-                                                </span>
-                                            </div>
-                                                }
-                                            >
-                                                {(() => {
-                                                    if (isVeloraGift) {
-                                                        const payload = msg.veloraCard?.payload || {};
-                                                        const gifter = payload.gifter || {};
-                                                        const giftCount = typeof payload.giftCount === "number" ? payload.giftCount : 1;
-                                                        const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
-                                                        const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
-                                                        const recipients = Array.isArray(payload.recipients) ? payload.recipients : [];
-                                                        const messageText = typeof payload.message === "string" ? payload.message.trim() : "";
-                                                        return (
-                                                            <div
-                                                                class="velora-giftcard"
-                                                                style={{ "--velora-accent": msg.accentColor || "#b9a7ff" }}
-                                                            >
-                                                                <div class="velora-giftcard__header">
-                                                                    <div class="velora-giftcard__avatar">
-                                                                        <img
-                                                                            src={gifter.avatarUrl || msg.avatarUrl || ""}
-                                                                            alt={gifter.displayName || gifter.username || msg.displayName}
-                                                                            class="velora-giftcard__avatar-img"
-                                                                            loading="lazy"
-                                                                        />
-                                                                    </div>
-                                                                    <div class="velora-giftcard__header-text">
-                                                                        <div class="velora-giftcard__gifter">
-                                                                            {gifter.displayName || gifter.username || msg.displayName}
-                                                                        </div>
-                                                                        <div class="velora-giftcard__pill">
-                                                                            <span class="velora-giftcard__pill-icon">🎁</span>
-                                                                            <span>{giftCount} Gift • {tierLabel}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="velora-giftcard__recipients">
-                                                                    <div class="velora-giftcard__recipients-title">Recipients</div>
-                                                                    <div class="velora-giftcard__recipients-list">
-                                                                        <For each={recipients}>
-                                                                            {(recipient: any) => (
-                                                                                <div class="velora-giftcard__recipient">
-                                                                                    <span class="velora-giftcard__dot" />
-                                                                                    <span>{recipient.displayName || recipient.username || "Viewer"}</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </For>
-                                                                    </div>
-                                                                    <Show when={messageText}>
-                                                                        <div class="velora-giftcard__message">{messageText}</div>
-                                                                    </Show>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    if (isVeloraPoints) {
-                                                        const payload = msg.veloraCard?.payload || {};
-                                                        const displayName = payload.displayName || payload.username || msg.displayName;
-                                                        const avatarUrl = payload.avatarUrl || msg.avatarUrl || "";
-                                                        const rewardName = payload.itemName || payload.rewardName || "Reward";
-                                                        const cost = typeof payload.cost === "number" ? payload.cost : null;
-                                                        return (
-                                                            <div
-                                                                class="velora-pointscard"
-                                                                style={{ "--velora-accent": msg.accentColor || "#c4a8ff" }}
-                                                            >
-                                                                <div class="velora-pointscard__avatar">
-                                                                    <img
-                                                                        src={avatarUrl}
-                                                                        alt={displayName}
-                                                                        class="velora-pointscard__avatar-img"
-                                                                        loading="lazy"
-                                                                    />
-                                                                </div>
-                                                                <div class="velora-pointscard__text">
-                                                                    <div class="velora-pointscard__name">{displayName}</div>
-                                                                    <div class="velora-pointscard__status">Redeemed {rewardName}</div>
-                                                                </div>
-                                                                <div class="velora-pointscard__pill">
-                                                                    {cost !== null ? `${cost} Points` : 'Channel Points'}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    if (isVeloraVolts) {
-                                                        const payload = msg.veloraCard?.payload || {};
-                                                        const sender = payload.sender || {};
-                                                        const displayName = sender.displayName || sender.username || msg.displayName;
-                                                        const avatarUrl = sender.avatarUrl || msg.avatarUrl || "";
-                                                        const amount = typeof payload.amount === "number" ? payload.amount : null;
-                                                        const messageText = typeof payload.message === "string" ? payload.message.trim() : "";
-                                                        return (
-                                                            <div
-                                                                class="velora-voltscard"
-                                                                style={{ "--velora-accent": msg.accentColor || "#9bdcff" }}
-                                                            >
-                                                                <div class="velora-voltscard__header">
-                                                                    <div class="velora-voltscard__avatar">
-                                                                        <img
-                                                                            src={avatarUrl}
-                                                                            alt={displayName}
-                                                                            class="velora-voltscard__avatar-img"
-                                                                            loading="lazy"
-                                                                        />
-                                                                    </div>
-                                                                    <div class="velora-voltscard__header-text">
-                                                                        <div class="velora-voltscard__name">{displayName}</div>
-                                                                        <div class="velora-voltscard__pill">
-                                                                            <span class="velora-voltscard__bolt">⚡</span>
-                                                                            {amount !== null ? `${amount} Volts` : "Volts"}
-                                                                        </div>
-                                                                        <Show when={messageText}>
-                                                                            <div class="velora-voltscard__message">{messageText}</div>
-                                                                        </Show>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    const payload = msg.veloraCard?.payload || {};
-                                                    const subscriber = payload.subscriber || {};
-                                                    const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
-                                                    const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
-                                                    return (
-                                                        <div
-                                                            class="velora-subcard"
-                                                            style={{ "--velora-accent": msg.accentColor || "#7db4ff" }}
-                                                        >
-                                                            <div class="velora-subcard__avatar">
-                                                                <img
-                                                                    src={subscriber.avatarUrl || msg.avatarUrl || ""}
-                                                                    alt={subscriber.displayName || subscriber.username || msg.displayName}
-                                                                    class="velora-subcard__avatar-img"
-                                                                    loading="lazy"
-                                                                />
-                                                            </div>
-                                                            <div class="velora-subcard__text">
-                                                                <div class="velora-subcard__name">
-                                                                    {subscriber.displayName || subscriber.username || msg.displayName}
-                                                                </div>
-                                                                <div class="velora-subcard__status">New Subscriber</div>
-                                                            </div>
-                                                            <div class="velora-subcard__tier">{tierLabel}</div>
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </Show>
-                                        );
-                                    })()}
-                                </div>
-                            </li>
+                            <ChatMessageItem
+                                msg={msg}
+                                index={index}
+                                config={config}
+                                getMessageClass={getMessageClassName}
+                                getMessageBubbleClass={getMessageBubbleClassName}
+                                formatTime={formatTime}
+                            />
                         )}
                     </For>
                 </ul>
