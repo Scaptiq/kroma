@@ -173,6 +173,7 @@ export default function Chat() {
     let veloraEmoteMap = new Map<string, string>();
     let veloraResolveInFlight = new Set<string>();
     let veloraBadgeMap = new Map<string, { url: string; title?: string }>();
+    let veloraChannelAccent: string | undefined;
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -1432,6 +1433,9 @@ export default function Chat() {
         if (msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration') {
             classes.push('message-velora-subcard');
         }
+        if (msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration') {
+            classes.push('message-velora-pointscard');
+        }
         if (msg.isHighlighted && config().showHighlights) classes.push('chat-message--highlighted');
         if (msg.isFirstMessage && config().showFirstMessage) classes.push('chat-message--first');
 
@@ -1907,6 +1911,10 @@ export default function Chat() {
         const cardPayload = cardSource?.payload;
 
         const content = String(item?.message || item?.content || item?.text || "");
+        const accentColor = veloraChannelAccent
+            || (typeof item?.accentColor === "string" ? item.accentColor : undefined)
+            || (typeof user?.accentColor === "string" ? user.accentColor : undefined)
+            || (typeof user?.profileTheme?.accentColor === "string" ? user.profileTheme.accentColor : undefined);
         if (!content && !cardType) return;
 
         const rawTimestamp = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
@@ -2064,6 +2072,7 @@ export default function Chat() {
             effectVariant,
             effectColor,
             veloraCard: cardType ? { type: cardType, payload: cardPayload } : undefined,
+            accentColor,
         };
 
         maybePlayMessageSound(timestamp);
@@ -2138,6 +2147,9 @@ export default function Chat() {
         const resolved = await resolveVeloraUser(username);
         const channelId = resolved?.userId || resolved?.raw?.id;
         const streamId = resolved?.raw?.streamInfo?.id;
+        veloraChannelAccent = typeof resolved?.raw?.profileTheme?.accentColor === "string"
+            ? resolved.raw.profileTheme.accentColor
+            : undefined;
         if (!channelId) {
             console.warn("Failed to resolve Velora channel ID, falling back to username.");
             veloraChannelId = username;
@@ -2605,9 +2617,10 @@ export default function Chat() {
                                     {(() => {
                                         const isVeloraGift = msg.platform === 'velora' && msg.veloraCard?.type === 'gift-celebration';
                                         const isVeloraSub = msg.platform === 'velora' && msg.veloraCard?.type === 'subscription-celebration';
+                                        const isVeloraPoints = msg.platform === 'velora' && msg.veloraCard?.type === 'points-celebration';
                                         return (
                                             <Show
-                                                when={isVeloraGift || isVeloraSub}
+                                                when={isVeloraGift || isVeloraSub || isVeloraPoints}
                                                 fallback={
                                             <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
                                                 {/* Timestamp */}
@@ -2745,7 +2758,10 @@ export default function Chat() {
                                                         const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
                                                         const recipients = Array.isArray(payload.recipients) ? payload.recipients : [];
                                                         return (
-                                                            <div class="velora-giftcard">
+                                                            <div
+                                                                class="velora-giftcard"
+                                                                style={{ "--velora-accent": msg.accentColor || "#b9a7ff" }}
+                                                            >
                                                                 <div class="velora-giftcard__header">
                                                                     <div class="velora-giftcard__avatar">
                                                                         <img
@@ -2782,12 +2798,45 @@ export default function Chat() {
                                                         );
                                                     }
 
+                                                    if (isVeloraPoints) {
+                                                        const payload = msg.veloraCard?.payload || {};
+                                                        const displayName = payload.displayName || payload.username || msg.displayName;
+                                                        const avatarUrl = payload.avatarUrl || msg.avatarUrl || "";
+                                                        const rewardName = payload.itemName || payload.rewardName || "Reward";
+                                                        const cost = typeof payload.cost === "number" ? payload.cost : null;
+                                                        return (
+                                                            <div
+                                                                class="velora-pointscard"
+                                                                style={{ "--velora-accent": msg.accentColor || "#c4a8ff" }}
+                                                            >
+                                                                <div class="velora-pointscard__avatar">
+                                                                    <img
+                                                                        src={avatarUrl}
+                                                                        alt={displayName}
+                                                                        class="velora-pointscard__avatar-img"
+                                                                        loading="lazy"
+                                                                    />
+                                                                </div>
+                                                                <div class="velora-pointscard__text">
+                                                                    <div class="velora-pointscard__name">{displayName}</div>
+                                                                    <div class="velora-pointscard__status">Redeemed {rewardName}</div>
+                                                                </div>
+                                                                <div class="velora-pointscard__pill">
+                                                                    {cost !== null ? `${cost} Points` : 'Channel Points'}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
                                                     const payload = msg.veloraCard?.payload || {};
                                                     const subscriber = payload.subscriber || {};
                                                     const tierRaw = typeof payload.tier === "string" ? payload.tier : "tier1";
                                                     const tierLabel = tierRaw.replace(/tier\s*/i, "TIER ").toUpperCase();
                                                     return (
-                                                        <div class="velora-subcard">
+                                                        <div
+                                                            class="velora-subcard"
+                                                            style={{ "--velora-accent": msg.accentColor || "#7db4ff" }}
+                                                        >
                                                             <div class="velora-subcard__avatar">
                                                                 <img
                                                                     src={subscriber.avatarUrl || msg.avatarUrl || ""}

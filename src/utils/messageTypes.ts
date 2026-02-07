@@ -127,6 +127,9 @@ export interface ChatMessage {
         type: string;
         payload?: any;
     };
+
+    // Velora accent color (channel/user)
+    accentColor?: string;
 }
 
 export interface SubTier {
