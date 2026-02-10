@@ -83,6 +83,7 @@ export interface ChatMessage {
     sourceChannelName?: string;
     sourceRoomId?: string;
     sourceLogo?: string;
+    avatarUrl?: string;
 
     // Pronouns
     pronouns?: string;

@@ -27,7 +27,7 @@ export default function ChatMessageItem(props: ChatMessageProps) {
         >
             <Show when={props.msg.reply && cfg().showReplies}>
                 <div class="reply-context">
-                    <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg style={{ width: '0.85em', height: '0.85em', "margin-right": '0.3em' }} class="text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path
                             fill-rule="evenodd"
                             d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
@@ -70,12 +70,13 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                     </Show>
 
                                     <Show when={props.msg.isShared && cfg().showSharedChat}>
-                                        <div class="mr-2 flex items-center h-[20px] self-center">
+                                        <div class="mr-2 flex items-center self-center" style={{ height: '1.2em' }}>
                                             <Show when={props.msg.sourceLogo}>
                                                 <img
                                                     src={props.msg.sourceLogo}
                                                     alt={props.msg.sourceChannelName || "Source"}
-                                                    class="w-5 h-5 rounded-full ring-1 ring-white/30"
+                                                    class="rounded-full ring-1 ring-white/30"
+                                                    style={{ width: '1.2em', height: '1.2em' }}
                                                     title={props.msg.sourceChannelName ? `From ${props.msg.sourceChannelName}` : "Shared Message"}
                                                 />
                                             </Show>
@@ -145,7 +146,7 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                             class="cheer-amount animate-pop-in"
                                             style={{ color: getCheerTierColor(props.msg.bits!) }}
                                         >
-                                            <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <svg style={{ width: '1em', height: '1em' }} viewBox="0 0 20 20" fill="currentColor">
                                                 <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" />
                                             </svg>
                                             {props.msg.bits}
@@ -171,8 +172,8 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                                         />
                                                     ) : part.type === 'cheer' ? (
                                                         <span class="inline-flex items-center gap-0.5 mx-0.5" style={{ color: part.color }}>
-                                                            <img src={part.url} alt={part.prefix} class="h-5 w-5" loading="lazy" />
-                                                            <span class="font-bold text-sm">{part.bits}</span>
+                                                            <img src={part.url} alt={part.prefix} style={{ height: '1.2em', width: '1.2em' }} loading="lazy" />
+                                                            <span class="font-bold" style={{ "font-size": '0.85em' }}>{part.bits}</span>
                                                         </span>
                                                     ) : null}
                                                 </>
