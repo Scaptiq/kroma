@@ -64,9 +64,9 @@ export async function GET(event: APIEvent) {
 
     try {
         const headers = buildHeaders(event);
+        const normalizedUsername = normalizeUsername(username);
         const queries = [
-            `${VELORA_API_BASE}/api/search/users?q=${encodeURIComponent(username)}`,
-            `${VELORA_API_BASE}/api/users/${encodeURIComponent(username)}`,
+            `${VELORA_API_BASE}/api/users/${encodeURIComponent(normalizedUsername)}`,
         ];
 
         let lastError: { status: number; body: any } | null = null;

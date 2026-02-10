@@ -44,11 +44,42 @@ export async function GET(event: APIEvent) {
     if (cursor) params.set("cursor", cursor);
     params.set("limit", "100");
 
-    try {
-        const res = await fetch(
-            `${VELORA_API_BASE}/api/chat/channels/${encodeURIComponent(channelId)}/history?${params.toString()}`,
-            { headers: buildHeaders(event) }
+    const headers = buildHeaders(event);
+    const fetchHistory = async (id: string) =>
+        fetch(
+            `${VELORA_API_BASE}/api/chat/channels/${encodeURIComponent(id)}/history?${params.toString()}`,
+            { headers }
         );
+
+    const resolveChannelId = async (usernameOrId: string): Promise<string | null> => {
+        try {
+            const userRes = await fetch(
+                `${VELORA_API_BASE}/api/users/${encodeURIComponent(usernameOrId.trim().replace(/^@/, "").toLowerCase())}`,
+                { headers }
+            );
+            if (!userRes.ok) return null;
+            const userData = await userRes.json();
+            const id =
+                userData?.id ||
+                userData?.userId ||
+                userData?.raw?.id ||
+                userData?.user?.id;
+            return id ? String(id) : null;
+        } catch {
+            return null;
+        }
+    };
+
+    try {
+        let res = await fetchHistory(channelId);
+
+        // Username-based input can fail on some history endpoints that expect numeric/user IDs.
+        if (!res.ok && res.status === 404) {
+            const resolvedId = await resolveChannelId(channelId);
+            if (resolvedId && resolvedId !== channelId) {
+                res = await fetchHistory(resolvedId);
+            }
+        }
 
         if (!res.ok) {
             return json(

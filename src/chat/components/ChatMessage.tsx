@@ -58,9 +58,10 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                     const isVeloraSub = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'subscription-celebration';
                     const isVeloraPoints = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'points-celebration';
                     const isVeloraVolts = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'volts-celebration';
+                    const isVeloraRaid = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'raid-celebration';
                     return (
                         <Show
-                            when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts}
+                            when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts || isVeloraRaid}
                             fallback={
                                 <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
                                     <Show when={cfg().showTimestamps}>
@@ -298,6 +299,43 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                                     </Show>
                                                 </div>
                                             </div>
+                                        </div>
+                                    );
+                                }
+
+                                if (isVeloraRaid) {
+                                    const payload = props.msg.veloraCard?.payload || {};
+                                    const raider = payload.raider || {};
+                                    const raiderName = raider.displayName || raider.username || props.msg.displayName;
+                                    const avatarUrl = raider.avatarUrl || props.msg.avatarUrl || "";
+                                    const viewerCount = typeof payload.viewerCount === "number" ? payload.viewerCount : null;
+                                    const messageText = typeof payload.message === "string" ? payload.message.trim() : "";
+                                    return (
+                                        <div
+                                            class="velora-raidcard"
+                                            style={{ "--velora-accent": props.msg.accentColor || "#ff8ea1" }}
+                                        >
+                                            <div class="velora-raidcard__header">
+                                                <div class="velora-raidcard__avatar">
+                                                    <img
+                                                        src={avatarUrl}
+                                                        alt={raiderName}
+                                                        class="velora-raidcard__avatar-img"
+                                                        loading="lazy"
+                                                    />
+                                                </div>
+                                                <div class="velora-raidcard__text">
+                                                    <div class="velora-raidcard__name">{raiderName}</div>
+                                                    <div class="velora-raidcard__status">Sent a Raid</div>
+                                                </div>
+                                                <div class="velora-raidcard__pill">
+                                                    <span class="velora-raidcard__pill-icon">🎉</span>
+                                                    {viewerCount !== null ? `${viewerCount} Viewers` : "Raid"}
+                                                </div>
+                                            </div>
+                                            <Show when={messageText}>
+                                                <div class="velora-raidcard__message">{messageText}</div>
+                                            </Show>
                                         </div>
                                     );
                                 }

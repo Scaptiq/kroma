@@ -224,7 +224,6 @@ export const buildChatSearchParams = (input: ChatQueryInput): URLSearchParams =>
         if (platforms.includes('youtube') && input.youtubeChannel) params.set('youtube', input.youtubeChannel);
         if (platforms.includes('velora') && input.veloraChannel) params.set('velora', input.veloraChannel);
     }
-
     if (input.showPlatformBadge === false) params.set('platformBadge', 'false');
 
     if (hasTwitch) {

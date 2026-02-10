@@ -96,7 +96,6 @@ export default function Chat() {
     let youtubeLiveChatId: string | null = null;
     let youtubeSeenMessageIds = new Set<string>();
     let youtubeEmojiMap: Map<string, string> | null = null;
-    let veloraPollTimer: number | undefined;
     let veloraSeenMessageIds = new Set<string>();
     let veloraChannelId: string | null = null;
     let veloraStreamId: string | null = null;
@@ -105,6 +104,7 @@ export default function Chat() {
     let veloraResolveInFlight = new Set<string>();
     let veloraBadgeMap = new Map<string, { url: string; title?: string }>();
     let veloraChannelAccent: string | undefined;
+    let veloraPollTimer: number | undefined;
     let messageContainer: HTMLUListElement | undefined;
 
     // Emote storage
@@ -1071,15 +1071,17 @@ export default function Chat() {
         }
     };
 
-    const extractVeloraMessages = (data: any): any[] => {
-        if (!data) return [];
-        if (Array.isArray(data)) return data;
-        if (Array.isArray(data.messages)) return data.messages;
-        if (Array.isArray(data.items)) return data.items;
-        if (Array.isArray(data.data)) return data.data;
-        if (Array.isArray(data.results)) return data.results;
-        return [];
+    const parseVeloraTimestamp = (rawTimestamp: any) => {
+        if (!rawTimestamp) return Date.now();
+        const numeric = Number(rawTimestamp);
+        if (!Number.isNaN(numeric)) {
+            return numeric > 10_000_000_000 ? numeric : numeric * 1000;
+        }
+        const parsed = new Date(String(rawTimestamp)).getTime();
+        return Number.isNaN(parsed) ? Date.now() : parsed;
     };
+
+    const toVeloraIsoTimestamp = (timestampMs: number) => new Date(timestampMs).toISOString();
 
     const addVeloraMessage = (item: any) => {
         const messageId = item?.id || item?.messageId || item?.message_id || item?._id || item?.uuid;
@@ -1104,16 +1106,7 @@ export default function Chat() {
         if (!content && !cardType) return;
 
         const rawTimestamp = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
-        const timestamp = rawTimestamp
-            ? (() => {
-                const numeric = Number(rawTimestamp);
-                if (!Number.isNaN(numeric)) {
-                    return numeric > 10_000_000_000 ? numeric : numeric * 1000;
-                }
-                const parsed = new Date(String(rawTimestamp)).getTime();
-                return Number.isNaN(parsed) ? Date.now() : parsed;
-            })()
-            : Date.now();
+        const timestamp = parseVeloraTimestamp(rawTimestamp);
 
         if (veloraMinTimestamp && timestamp < veloraMinTimestamp) {
             return;
@@ -1288,69 +1281,399 @@ export default function Chat() {
         }
     };
 
+    const normalizeVeloraUser = (source: any, fallback: any = {}) => {
+        const user = source || {};
+        const base = fallback || {};
+        const id = user?.id || user?.userId || base?.id || base?.userId || "unknown";
+        const username = user?.username || user?.handle || user?.slug || base?.username || base?.handle || base?.slug || "unknown";
+        const displayName = user?.displayName || user?.display_name || base?.displayName || base?.display_name || username;
+        const avatarUrl = user?.avatarUrl || user?.avatar || base?.avatarUrl || base?.avatar;
+        const accentColor = typeof user?.accentColor === "string"
+            ? user.accentColor
+            : typeof user?.profileTheme?.accentColor === "string"
+                ? user.profileTheme.accentColor
+                : typeof base?.accentColor === "string"
+                    ? base.accentColor
+                    : typeof base?.profileTheme?.accentColor === "string"
+                        ? base.profileTheme.accentColor
+                        : undefined;
+        return { id: String(id), username: String(username), displayName: String(displayName), avatarUrl, accentColor };
+    };
+
+    const syntheticVeloraId = (prefix: string, timestampMs: number) =>
+        `${prefix}-${timestampMs}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const addVeloraCardMessage = (
+        eventType: string,
+        timestampMs: number,
+        fallbackUser: any,
+        cardType: string,
+        payload: any,
+        content = ""
+    ) => {
+        const normalizedUser = normalizeVeloraUser(fallbackUser);
+        const messageId =
+            payload?.eventId ||
+            payload?.redemptionId ||
+            payload?.subscriptionId ||
+            payload?.giftId ||
+            payload?.cheerId ||
+            payload?.raidId ||
+            syntheticVeloraId(eventType, timestampMs);
+        addVeloraMessage({
+            id: String(messageId),
+            timestamp: toVeloraIsoTimestamp(timestampMs),
+            user: {
+                id: normalizedUser.id,
+                username: normalizedUser.username,
+                displayName: normalizedUser.displayName,
+                avatarUrl: normalizedUser.avatarUrl,
+                accentColor: normalizedUser.accentColor
+            },
+            accentColor: normalizedUser.accentColor,
+            content,
+            card: { type: cardType, payload },
+        });
+    };
+
+    const normalizeVeloraEventPayload = (rawPayload: any, forcedEventType?: string) => {
+        const payload = Array.isArray(rawPayload) ? rawPayload[0] : rawPayload;
+        if (!payload || typeof payload !== "object") return null;
+
+        if (typeof payload?.event === "string" && payload?.data && typeof payload.data === "object") {
+            return payload;
+        }
+
+        if (typeof payload?.type === "string" && payload?.data && typeof payload.data === "object") {
+            return {
+                event: payload.type,
+                timestamp: payload.timestamp,
+                data: payload.data,
+            };
+        }
+
+        if (typeof payload?.eventType === "string" && payload?.payload && typeof payload.payload === "object") {
+            return {
+                event: payload.eventType,
+                timestamp: payload.timestamp,
+                data: payload.payload,
+            };
+        }
+
+        if (forcedEventType) {
+            if (payload?.data && typeof payload.data === "object") {
+                return {
+                    event: forcedEventType,
+                    timestamp: payload.timestamp,
+                    data: payload.data,
+                };
+            }
+            return {
+                event: forcedEventType,
+                timestamp: payload.timestamp || payload?.createdAt || payload?.created_at,
+                data: payload,
+            };
+        }
+
+        return null;
+    };
+
+    const handleVeloraEvent = (rawPayload: any, forcedEventType?: string) => {
+        const payload = normalizeVeloraEventPayload(rawPayload, forcedEventType);
+        if (!payload) return;
+
+        const eventType = String(payload?.event || "");
+        const data = payload?.data || {};
+        const timestampMs = parseVeloraTimestamp(
+            payload?.timestamp ||
+            data?.timestamp ||
+            data?.createdAt ||
+            data?.created_at ||
+            data?.redeemedAt ||
+            data?.followedAt
+        );
+
+        if (eventType === "chat.message") {
+            const messageObject = data?.message && typeof data.message === "object" ? data.message : null;
+            const messageText = typeof data?.message === "string"
+                ? data.message
+                : typeof messageObject?.text === "string"
+                    ? messageObject.text
+                    : typeof messageObject?.content === "string"
+                        ? messageObject.content
+                        : typeof data?.content === "string"
+                            ? data.content
+                            : typeof data?.text === "string"
+                                ? data.text
+                                : "";
+            const user = normalizeVeloraUser(data?.user || messageObject?.user, data);
+            addVeloraMessage({
+                ...data,
+                id: String(
+                    data?.messageId ||
+                    data?.id ||
+                    data?._id ||
+                    messageObject?.id ||
+                    messageObject?.messageId ||
+                    messageObject?._id ||
+                    syntheticVeloraId("chat-message", timestampMs)
+                ),
+                timestamp: toVeloraIsoTimestamp(timestampMs),
+                createdAt: toVeloraIsoTimestamp(timestampMs),
+                created_at: toVeloraIsoTimestamp(timestampMs),
+                message: messageText,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    displayName: user.displayName,
+                    avatarUrl: user.avatarUrl,
+                    accentColor: user.accentColor
+                },
+                badges: data?.badges || data?.roles || data?.user?.badges || data?.user?.roles || messageObject?.badges || messageObject?.roles || [],
+                emotes: data?.emotes || data?.emoticons || messageObject?.emotes || messageObject?.emoticons || [],
+            });
+            return;
+        }
+
+        if (eventType === "channel.subscribe") {
+            const subscriber = normalizeVeloraUser(data?.subscriber, data);
+            addVeloraCardMessage(
+                eventType,
+                timestampMs,
+                subscriber,
+                "subscription-celebration",
+                {
+                    subscriber: {
+                        username: subscriber.username,
+                        displayName: subscriber.displayName,
+                        avatarUrl: subscriber.avatarUrl,
+                    },
+                    tier: data?.tier || "tier1",
+                    isGift: data?.isGift === true,
+                    months: typeof data?.months === "number" ? data.months : undefined,
+                    message: typeof data?.message === "string" ? data.message : undefined,
+                    eventId: data?.subscriptionId || data?.id,
+                },
+                typeof data?.message === "string" ? data.message : ""
+            );
+            return;
+        }
+
+        if (eventType === "channel.subscription.gift") {
+            const gifter = normalizeVeloraUser(data?.gifter, data);
+            const recipients = Array.isArray(data?.recipients)
+                ? data.recipients.map((recipient: any) => {
+                    const normalized = normalizeVeloraUser(recipient);
+                    return {
+                        username: normalized.username,
+                        displayName: normalized.displayName,
+                        avatarUrl: normalized.avatarUrl,
+                    };
+                })
+                : [];
+            addVeloraCardMessage(
+                eventType,
+                timestampMs,
+                gifter,
+                "gift-celebration",
+                {
+                    gifter: {
+                        username: gifter.username,
+                        displayName: gifter.displayName,
+                        avatarUrl: gifter.avatarUrl,
+                    },
+                    giftCount: typeof data?.giftCount === "number"
+                        ? data.giftCount
+                        : typeof data?.count === "number"
+                            ? data.count
+                            : recipients.length || 1,
+                    tier: data?.tier || "tier1",
+                    recipients,
+                    message: typeof data?.message === "string" ? data.message : "",
+                    eventId: data?.giftId || data?.id,
+                },
+                typeof data?.message === "string" ? data.message : ""
+            );
+            return;
+        }
+
+        if (eventType === "channel.cheer") {
+            const sender = normalizeVeloraUser(data?.sender, data);
+            addVeloraCardMessage(
+                eventType,
+                timestampMs,
+                sender,
+                "volts-celebration",
+                {
+                    sender: {
+                        username: sender.username,
+                        displayName: sender.displayName,
+                        avatarUrl: sender.avatarUrl,
+                    },
+                    amount: typeof data?.amount === "number"
+                        ? data.amount
+                        : typeof data?.volts === "number"
+                            ? data.volts
+                            : null,
+                    message: typeof data?.message === "string" ? data.message : "",
+                    eventId: data?.cheerId || data?.id,
+                },
+                typeof data?.message === "string" ? data.message : ""
+            );
+            return;
+        }
+
+        if (eventType === "channel.channel_points_redemption") {
+            const redeemer = normalizeVeloraUser({ ...data, ...data?.user }, data);
+            addVeloraCardMessage(
+                eventType,
+                timestampMs,
+                redeemer,
+                "points-celebration",
+                {
+                    username: redeemer.username,
+                    displayName: redeemer.displayName,
+                    avatarUrl: redeemer.avatarUrl,
+                    itemName: data?.rewardTitle || data?.rewardName || data?.itemName || "Reward",
+                    cost: typeof data?.rewardCost === "number"
+                        ? data.rewardCost
+                        : typeof data?.cost === "number"
+                            ? data.cost
+                            : null,
+                    userInput: typeof data?.userInput === "string" ? data.userInput : "",
+                    status: data?.status,
+                    eventId: data?.redemptionId || data?.id,
+                },
+                typeof data?.userInput === "string" ? data.userInput : ""
+            );
+            return;
+        }
+
+        if (eventType === "channel.raid") {
+            const raider = normalizeVeloraUser(data?.raider, data?.from || data);
+            const raiderName = data?.raiderDisplayName || data?.raiderUsername || data?.fromChannelDisplayName || data?.fromChannelUsername || raider.displayName;
+            const viewerCount = typeof data?.viewerCount === "number"
+                ? data.viewerCount
+                : typeof data?.viewers === "number"
+                    ? data.viewers
+                    : typeof data?.raidSize === "number"
+                        ? data.raidSize
+                        : null;
+            addVeloraCardMessage(
+                eventType,
+                timestampMs,
+                { ...raider, displayName: raiderName, username: data?.fromChannelUsername || raider.username },
+                "raid-celebration",
+                {
+                    raider: {
+                        username: data?.fromChannelUsername || raider.username,
+                        displayName: raiderName,
+                        avatarUrl: data?.fromChannelAvatarUrl || raider.avatarUrl,
+                    },
+                    viewerCount,
+                    message: typeof data?.message === "string" ? data.message : "",
+                    eventId: data?.raidId || data?.id,
+                },
+                typeof data?.message === "string" ? data.message : ""
+            );
+        }
+    };
+
+    const extractVeloraHistoryMessages = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data?.items)) return data.items;
+        if (Array.isArray(data?.messages)) return data.messages;
+        if (Array.isArray(data?.history)) return data.history;
+        if (Array.isArray(data?.data)) return data.data;
+        if (Array.isArray(data?.data?.items)) return data.data.items;
+        if (Array.isArray(data?.data?.messages)) return data.data.messages;
+        if (Array.isArray(data?.results)) return data.results;
+        return [];
+    };
+
     const pollVeloraChat = async () => {
-        if (!veloraChannelId || !keepAlive) return;
+        if (!keepAlive || !veloraChannelId) return;
 
         try {
-            const responses: any[] = [];
-            const channelHistory = await fetchVeloraHistory(veloraChannelId);
-            if (channelHistory) {
-                responses.push(channelHistory);
-            }
-            if (veloraStreamId && veloraStreamId !== veloraChannelId) {
-                const streamHistory = await fetchVeloraHistory(veloraStreamId);
-                if (streamHistory) {
-                    responses.push(streamHistory);
-                }
-            }
-            if (responses.length === 0) {
-                setVeloraConnected(false);
-                veloraPollTimer = window.setTimeout(pollVeloraChat, 3000);
-                return;
-            }
-            const items = responses.flatMap(extractVeloraMessages);
-            items
-                .map((item: any) => {
-                    const raw = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
-                    const numeric = Number(raw);
-                    const ts = Number.isNaN(numeric) ? new Date(String(raw)).getTime() : (numeric > 10_000_000_000 ? numeric : numeric * 1000);
-                    return { item, ts: Number.isNaN(ts) ? Date.now() : ts };
-                })
-                .sort((a, b) => a.ts - b.ts)
-                .forEach(({ item }) => addVeloraMessage(item));
+            const data = await fetchVeloraHistory(veloraChannelId);
+            if (!keepAlive) return;
 
+            const entries = extractVeloraHistoryMessages(data)
+                .slice()
+                .sort((a: any, b: any) => {
+                    const aTs = parseVeloraTimestamp(a?.createdAt || a?.created_at || a?.timestamp || a?.time);
+                    const bTs = parseVeloraTimestamp(b?.createdAt || b?.created_at || b?.timestamp || b?.time);
+                    return aTs - bTs;
+                });
+
+            entries.forEach(addVeloraMessage);
             setVeloraConnected(true);
+
             veloraPollTimer = window.setTimeout(pollVeloraChat, 2500);
-        } catch (e) {
-            console.error("Failed to poll Velora chat:", e);
+        } catch (err) {
+            console.error("Velora history polling failed:", err);
             setVeloraConnected(false);
-            veloraPollTimer = window.setTimeout(pollVeloraChat, 3500);
+            veloraPollTimer = window.setTimeout(pollVeloraChat, 5000);
         }
+    };
+
+    const startVeloraPolling = () => {
+        if (!keepAlive || !veloraChannelId) return;
+        if (veloraPollTimer) {
+            window.clearTimeout(veloraPollTimer);
+            veloraPollTimer = undefined;
+        }
+        // Consider polling mode "connected" once loop starts.
+        setVeloraConnected(true);
+        pollVeloraChat().catch((err) => {
+            setVeloraConnected(false);
+            console.error("Failed to start Velora polling:", err);
+        });
     };
 
     const connectVelora = async (username: string) => {
         console.log(`🟦 Kroma - Connecting to Velora #${username}`);
-        const resolved = await resolveVeloraUser(username);
-        const channelId = resolved?.userId || resolved?.raw?.id;
+
+        // Reset state before reconnecting.
+        veloraChannelId = null;
+        veloraStreamId = null;
+        veloraChannelAccent = undefined;
+        veloraSeenMessageIds.clear();
+        veloraMinTimestamp = Date.now() - 15000;
+
+        if (veloraPollTimer) {
+            window.clearTimeout(veloraPollTimer);
+            veloraPollTimer = undefined;
+        }
+
+        // Resolve channel metadata first so polling mode can use channel ID reliably.
+        let resolved: any = null;
+        try {
+            resolved = await resolveVeloraUser(username);
+        } catch (err) {
+            console.error("Failed to resolve Velora user profile:", err);
+        }
+
+        const resolvedChannelId = resolved?.userId || resolved?.raw?.id;
         const streamId = resolved?.raw?.streamInfo?.id;
         veloraChannelAccent = typeof resolved?.raw?.profileTheme?.accentColor === "string"
             ? resolved.raw.profileTheme.accentColor
             : undefined;
-        if (!channelId) {
-            console.warn("Failed to resolve Velora channel ID, falling back to username.");
-            veloraChannelId = username;
-        } else {
-            veloraChannelId = String(channelId);
-        }
+        veloraChannelId = resolvedChannelId ? String(resolvedChannelId) : username;
         veloraStreamId = streamId ? String(streamId) : null;
-        veloraSeenMessageIds.clear();
-        veloraMinTimestamp = Date.now();
-        await Promise.all([
-            loadVeloraEmotes(veloraChannelId),
+
+        // Load metadata in background; don't block chat.
+        const channelForAssets = veloraChannelId || username;
+        Promise.all([
+            loadVeloraEmotes(channelForAssets),
             loadVeloraBadgeCatalog(),
             loadVeloraChannelBadges(username)
-        ]);
-        pollVeloraChat();
+        ]).catch((err) => {
+            console.error("Failed to initialize Velora metadata:", err);
+        });
+
+        startVeloraPolling();
     };
 
     onMount(async () => {
@@ -1365,11 +1688,16 @@ export default function Chat() {
         const veloraChannelName = config().veloraChannel;
 
         if (hasKick && kickChannelName) {
-            await connectKick(kickChannelName);
+            connectKick(kickChannelName).catch((err) => {
+                console.error("Failed to connect Kick:", err);
+            });
         }
 
         if (hasVelora && veloraChannelName) {
-            await connectVelora(veloraChannelName);
+            connectVelora(veloraChannelName).catch((err) => {
+                setVeloraConnected(false);
+                console.error("Failed to connect Velora:", err);
+            });
         }
 
         if (hasTwitch && twitchChannelName) {
@@ -1685,7 +2013,11 @@ export default function Chat() {
         }
 
         if (hasYouTube && youtubeChannelName) {
-            await connectYouTube(youtubeChannelName);
+            try {
+                await connectYouTube(youtubeChannelName);
+            } catch (err) {
+                console.error("Failed to connect YouTube:", err);
+            }
         }
 
     });
