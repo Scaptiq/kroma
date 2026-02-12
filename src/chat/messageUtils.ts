@@ -68,6 +68,9 @@ export const getMessageBubbleClass = (
     if (msg.platform === 'velora' && msg.veloraCard?.type === 'raid-celebration') {
         classes.push('message-velora-raidcard');
     }
+    if (msg.platform === 'velora' && msg.veloraCard?.type === 'giveaway-result') {
+        classes.push('message-velora-giveawaycard');
+    }
     if (msg.isHighlighted && options.showHighlights) classes.push('chat-message--highlighted');
     if (msg.isFirstMessage && options.showFirstMessage) classes.push('chat-message--first');
 

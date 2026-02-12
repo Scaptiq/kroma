@@ -59,9 +59,10 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                     const isVeloraPoints = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'points-celebration';
                     const isVeloraVolts = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'volts-celebration';
                     const isVeloraRaid = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'raid-celebration';
+                    const isVeloraGiveaway = props.msg.platform === 'velora' && props.msg.veloraCard?.type === 'giveaway-result';
                     return (
                         <Show
-                            when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts || isVeloraRaid}
+                            when={isVeloraGift || isVeloraSub || isVeloraPoints || isVeloraVolts || isVeloraRaid || isVeloraGiveaway}
                             fallback={
                                 <div class="flex items-start gap-2 flex-wrap leading-snug pointer-events-auto">
                                     <Show when={cfg().showTimestamps}>
@@ -324,7 +325,7 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                                         loading="lazy"
                                                     />
                                                 </div>
-                                                <div class="velora-raidcard__text">
+                                                <div class="velora-raidcard__header-text">
                                                     <div class="velora-raidcard__name">{raiderName}</div>
                                                     <div class="velora-raidcard__status">Sent a Raid</div>
                                                 </div>
@@ -335,6 +336,71 @@ export default function ChatMessageItem(props: ChatMessageProps) {
                                             </div>
                                             <Show when={messageText}>
                                                 <div class="velora-raidcard__message">{messageText}</div>
+                                            </Show>
+                                        </div>
+                                    );
+                                }
+
+                                if (isVeloraGiveaway) {
+                                    const payload = props.msg.veloraCard?.payload || {};
+                                    const title = typeof payload.title === "string" && payload.title.trim()
+                                        ? payload.title.trim()
+                                        : "Giveaway";
+                                    const description = typeof payload.description === "string" ? payload.description.trim() : "";
+                                    const statusRaw = typeof payload.status === "string" ? payload.status : "";
+                                    const statusLabel = statusRaw ? statusRaw.replace(/_/g, " ").toUpperCase() : "RESULT";
+                                    const totalEntries = typeof payload.totalEntries === "number" ? payload.totalEntries : null;
+                                    const winners = Array.isArray(payload.winners) ? payload.winners : [];
+                                    const winner = (payload.winner && typeof payload.winner === "object")
+                                        ? payload.winner
+                                        : winners[0] || null;
+                                    const winnerName = winner
+                                        ? winner.displayName || winner.username || "Winner"
+                                        : null;
+                                    const winnerAvatar = winner?.avatarUrl || "";
+                                    const winnerCount = typeof payload.winnerCount === "number"
+                                        ? payload.winnerCount
+                                        : winners.length;
+                                    return (
+                                        <div
+                                            class="velora-giveawaycard"
+                                            style={{ "--velora-accent": props.msg.accentColor || "#f1c85f" }}
+                                        >
+                                            <div class="velora-giveawaycard__header">
+                                                <div class="velora-giveawaycard__icon" aria-hidden="true">🏆</div>
+                                                <div class="velora-giveawaycard__header-text">
+                                                    <div class="velora-giveawaycard__title">{title}</div>
+                                                    <div class="velora-giveawaycard__status">{statusLabel}</div>
+                                                </div>
+                                                <Show when={totalEntries !== null}>
+                                                    <div class="velora-giveawaycard__pill">
+                                                        {totalEntries!.toLocaleString()} Entr{totalEntries === 1 ? "y" : "ies"}
+                                                    </div>
+                                                </Show>
+                                            </div>
+                                            <Show when={description}>
+                                                <div class="velora-giveawaycard__description">{description}</div>
+                                            </Show>
+                                            <Show when={winnerName}>
+                                                <div class="velora-giveawaycard__winner">
+                                                    <Show when={winnerAvatar}>
+                                                        <img
+                                                            src={winnerAvatar}
+                                                            alt={winnerName || "Winner"}
+                                                            class="velora-giveawaycard__winner-avatar"
+                                                            loading="lazy"
+                                                        />
+                                                    </Show>
+                                                    <div class="velora-giveawaycard__winner-text">
+                                                        <div class="velora-giveawaycard__winner-label">Winner</div>
+                                                        <div class="velora-giveawaycard__winner-name">{winnerName}</div>
+                                                    </div>
+                                                </div>
+                                            </Show>
+                                            <Show when={!winnerName && winnerCount > 0}>
+                                                <div class="velora-giveawaycard__winner-count">
+                                                    {winnerCount} winner{winnerCount === 1 ? "" : "s"} drawn
+                                                </div>
                                             </Show>
                                         </div>
                                     );

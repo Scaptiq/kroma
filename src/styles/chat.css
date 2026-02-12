@@ -589,6 +589,21 @@
     content: none !important;
 }
 
+.message-velora-giveawaycard {
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 0 !important;
+    box-shadow: none;
+    outline: none;
+    filter: none;
+}
+
+.message-velora-giveawaycard::before,
+.message-velora-giveawaycard::after {
+    content: none !important;
+}
+
 .velora-giftcard {
     --velora-accent: #b9a7ff;
     background: radial-gradient(120% 120% at 0% 0%, rgba(88, 68, 140, 0.35), rgba(22, 18, 38, 0.95) 55%),
@@ -920,11 +935,11 @@
 
 .velora-raidcard {
     --velora-accent: #ff8ea1;
-    background: radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(26, 12, 22, 0.96) 60%),
+    background: radial-gradient(140% 140% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(26, 12, 22, 0.96) 60%),
         linear-gradient(160deg, rgba(34, 14, 26, 0.98), rgba(20, 10, 18, 0.98));
     border: 1px solid color-mix(in srgb, var(--velora-accent) 42%, transparent);
-    border-radius: 1.3em;
-    padding: 0.95em 1.15em;
+    border-radius: 1.25em;
+    padding: 0.9em 1.15em;
     min-width: 20em;
     max-width: 24em;
     color: #ffeef3;
@@ -956,7 +971,7 @@
     display: block;
 }
 
-.velora-raidcard__text {
+.velora-raidcard__header-text {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1002,6 +1017,126 @@
     font-size: 0.8rem;
     color: rgba(255, 228, 238, 0.86);
     line-height: 1.2;
+}
+
+.velora-giveawaycard {
+    --velora-accent: #f1c85f;
+    background: radial-gradient(140% 140% at 0% 0%, color-mix(in srgb, var(--velora-accent) 22%, transparent), rgba(30, 24, 10, 0.96) 60%),
+        linear-gradient(160deg, rgba(38, 30, 12, 0.98), rgba(22, 17, 8, 0.98));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 45%, transparent);
+    border-radius: 1.25em;
+    padding: 0.95em 1.15em;
+    min-width: 20em;
+    max-width: 24em;
+    color: #fff7e6;
+}
+
+.velora-giveawaycard__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.velora-giveawaycard__icon {
+    width: 2.1em;
+    height: 2.1em;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--velora-accent) 22%, rgba(90, 64, 20, 0.7));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 52%, transparent);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.velora-giveawaycard__header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.velora-giveawaycard__title {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: #fffaf0;
+}
+
+.velora-giveawaycard__status {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+    color: rgba(255, 235, 183, 0.85);
+}
+
+.velora-giveawaycard__pill {
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--velora-accent) 20%, rgba(88, 64, 22, 0.75));
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 58%, transparent);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 1.6px;
+    color: #fff7df;
+    flex-shrink: 0;
+}
+
+.velora-giveawaycard__description {
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: rgba(255, 241, 209, 0.86);
+    line-height: 1.25;
+}
+
+.velora-giveawaycard__winner {
+    margin-top: 10px;
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 35%, transparent);
+    background: rgba(28, 21, 9, 0.72);
+    border-radius: 0.85em;
+    padding: 0.58em 0.72em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.velora-giveawaycard__winner-avatar {
+    width: 1.95em;
+    height: 1.95em;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border: 1px solid color-mix(in srgb, var(--velora-accent) 50%, transparent);
+}
+
+.velora-giveawaycard__winner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.velora-giveawaycard__winner-label {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255, 227, 167, 0.76);
+}
+
+.velora-giveawaycard__winner-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff8ea;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.velora-giveawaycard__winner-count {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: rgba(255, 236, 195, 0.85);
 }
 
 /* Raid Messages */

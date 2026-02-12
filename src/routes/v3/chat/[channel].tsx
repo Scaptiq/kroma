@@ -1083,6 +1083,28 @@ export default function Chat() {
 
     const toVeloraIsoTimestamp = (timestampMs: number) => new Date(timestampMs).toISOString();
 
+    const isCssColor = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return false;
+        if (/^#[0-9a-f]{3,8}$/i.test(trimmed)) return true;
+        if (/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\(/i.test(trimmed)) return true;
+        if (/^var\(--[a-z0-9-_]+\)$/i.test(trimmed)) return true;
+        if (typeof CSS !== "undefined" && typeof CSS.supports === "function") {
+            return CSS.supports("color", trimmed);
+        }
+        return false;
+    };
+
+    const pickValidAccentColor = (...candidates: any[]): string | undefined => {
+        for (const candidate of candidates) {
+            if (typeof candidate !== "string") continue;
+            const trimmed = candidate.trim();
+            if (!trimmed) continue;
+            if (isCssColor(trimmed)) return trimmed;
+        }
+        return undefined;
+    };
+
     const addVeloraMessage = (item: any) => {
         const messageId = item?.id || item?.messageId || item?.message_id || item?._id || item?.uuid;
         if (!messageId) return;
@@ -1095,14 +1117,65 @@ export default function Chat() {
         const displayName = String(user?.displayName || user?.display_name || item?.displayName || username);
         const userId = String(user?.id || user?.userId || item?.userId || username);
         const cardSource = item?.metadata?.card || item?.card || item?.metadata?.payload?.card;
-        const cardType = typeof cardSource?.type === "string" ? cardSource.type : undefined;
-        const cardPayload = cardSource?.payload;
+        const raidAnnouncement =
+            item?.raidAnnouncement ||
+            item?.metadata?.raidAnnouncement ||
+            item?.metadata?.payload?.raidAnnouncement;
+        const variant = item?.variant || item?.metadata?.variant || item?.metadata?.payload?.variant;
+        let cardType = typeof cardSource?.type === "string" ? cardSource.type : undefined;
+        let cardPayload = cardSource?.payload;
+
+        const isRaidAnnouncement =
+            variant === "raid-announcement" ||
+            cardType === "raid-announcement" ||
+            !!raidAnnouncement ||
+            messageKey.startsWith("raid_");
+
+        if (isRaidAnnouncement) {
+            const existingPayload = cardPayload && typeof cardPayload === "object" ? cardPayload : {};
+            const existingRaider = existingPayload.raider && typeof existingPayload.raider === "object"
+                ? existingPayload.raider
+                : {};
+            const viewerCount = typeof existingPayload.viewerCount === "number"
+                ? existingPayload.viewerCount
+                : typeof raidAnnouncement?.viewerCount === "number"
+                    ? raidAnnouncement.viewerCount
+                    : typeof item?.viewerCount === "number"
+                        ? item.viewerCount
+                        : typeof item?.viewers === "number"
+                            ? item.viewers
+                            : typeof item?.raidSize === "number"
+                                ? item.raidSize
+                                : null;
+            const raidMessage = typeof existingPayload.message === "string"
+                ? existingPayload.message
+                : typeof raidAnnouncement?.message === "string"
+                    ? raidAnnouncement.message
+                    : "";
+            cardType = "raid-celebration";
+            cardPayload = {
+                ...existingPayload,
+                raider: {
+                    ...existingRaider,
+                    username: existingRaider.username || raidAnnouncement?.username || username,
+                    displayName: existingRaider.displayName || raidAnnouncement?.displayName || displayName,
+                    avatarUrl: existingRaider.avatarUrl || raidAnnouncement?.avatarUrl || item?.avatarUrl || user?.avatarUrl || user?.avatar
+                },
+                viewerCount,
+                message: raidMessage,
+                eventId: existingPayload.eventId || item?.eventId || item?.raidId || item?.id
+            };
+        }
 
         const content = String(item?.message || item?.content || item?.text || "");
-        const accentColor = veloraChannelAccent
-            || (typeof item?.accentColor === "string" ? item.accentColor : undefined)
-            || (typeof user?.accentColor === "string" ? user.accentColor : undefined)
-            || (typeof user?.profileTheme?.accentColor === "string" ? user.profileTheme.accentColor : undefined);
+        const accentColor = pickValidAccentColor(
+            veloraChannelAccent,
+            raidAnnouncement?.accentColor,
+            item?.accentColor,
+            item?.metadata?.accentColor,
+            user?.accentColor,
+            user?.profileTheme?.accentColor
+        );
         if (!content && !cardType) return;
 
         const rawTimestamp = item?.createdAt || item?.created_at || item?.timestamp || item?.time;
@@ -1550,7 +1623,23 @@ export default function Chat() {
         }
 
         if (eventType === "channel.raid") {
-            const raider = normalizeVeloraUser(data?.raider, data?.from || data);
+            const raidAccentColor = typeof data?.accentColor === "string"
+                ? data.accentColor
+                : typeof data?.fromChannelAccentColor === "string"
+                    ? data.fromChannelAccentColor
+                    : typeof data?.from?.accentColor === "string"
+                        ? data.from.accentColor
+                        : typeof data?.from?.profileTheme?.accentColor === "string"
+                            ? data.from.profileTheme.accentColor
+                            : typeof data?.raider?.accentColor === "string"
+                                ? data.raider.accentColor
+                                : typeof data?.raider?.profileTheme?.accentColor === "string"
+                                    ? data.raider.profileTheme.accentColor
+                                    : undefined;
+            const raider = normalizeVeloraUser(
+                { ...data?.raider, accentColor: raidAccentColor },
+                { ...(data?.from || data), accentColor: raidAccentColor }
+            );
             const raiderName = data?.raiderDisplayName || data?.raiderUsername || data?.fromChannelDisplayName || data?.fromChannelUsername || raider.displayName;
             const viewerCount = typeof data?.viewerCount === "number"
                 ? data.viewerCount
@@ -1559,10 +1648,16 @@ export default function Chat() {
                     : typeof data?.raidSize === "number"
                         ? data.raidSize
                         : null;
+            const messageText = typeof data?.message === "string" ? data.message : "";
             addVeloraCardMessage(
                 eventType,
                 timestampMs,
-                { ...raider, displayName: raiderName, username: data?.fromChannelUsername || raider.username },
+                {
+                    ...raider,
+                    displayName: raiderName,
+                    username: data?.fromChannelUsername || raider.username,
+                    accentColor: raidAccentColor || raider.accentColor
+                },
                 "raid-celebration",
                 {
                     raider: {
@@ -1571,11 +1666,12 @@ export default function Chat() {
                         avatarUrl: data?.fromChannelAvatarUrl || raider.avatarUrl,
                     },
                     viewerCount,
-                    message: typeof data?.message === "string" ? data.message : "",
+                    message: messageText,
                     eventId: data?.raidId || data?.id,
                 },
-                typeof data?.message === "string" ? data.message : ""
+                messageText
             );
+            return;
         }
     };
 
